@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ivixhub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ivixhub
+      POSTGRES_USER: ivixhub
+      POSTGRES_PASSWORD: ivixhub_pass
+      TZ: UTC
+    ports:
+      - "5434:5432"
+    volumes:
+      - ivixhub_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ivixhub -d ivixhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: ivixhub-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ivixhub_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  ivixhub_postgres_data:
+  ivixhub_redis_data:
+

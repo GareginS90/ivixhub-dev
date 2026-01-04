@@ -1,0 +1,68 @@
+server:
+  port: ${PORT:8085}
+
+spring:
+  application:
+    name: ivixhub-api
+
+  profiles:
+    active: dev
+
+  datasource:
+    url: ${IVIXHUB_DB_URL:jdbc:postgresql://localhost:5434/ivixhub}
+    username: ${IVIXHUB_DB_USER:ivixhub}
+    password: ${IVIXHUB_DB_PASS:ivixhub_pass}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: INFO
+    am.ivixhub: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+
+ivixhub:
+  debugErrors: true
+
+  security:
+    jwt:
+      secret: ${IVIXHUB_JWT_SECRET:CHANGE_ME__PLEASE_USE_A_LONG_RANDOM_SECRET_32+_CHARS}
+      accessMinutes: ${IVIXHUB_JWT_ACCESS_MINUTES:15}
+      refreshDays: ${IVIXHUB_JWT_REFRESH_DAYS:30}
+
+  storage:
+    local:
+      rootDir: ${IVIXHUB_STORAGE_ROOT:/home/garos/ivixhub/storage}
+
+  video:
+    provider: ${IVIXHUB_VIDEO_PROVIDER:MOCK_VIDEO}   # MOCK_VIDEO | AGORA
+
+  payments:
+    allowedMethods: ${IVIXHUB_PAYMENT_METHODS:CARD,IDRAM,TELCELL}
+
