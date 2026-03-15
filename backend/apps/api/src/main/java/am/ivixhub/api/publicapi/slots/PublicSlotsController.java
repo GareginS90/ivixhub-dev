@@ -53,17 +53,19 @@ public class PublicSlotsController {
 
         var availability = availabilityRepository.findAllByPsychologistIdAndActiveTrue(psychologistId);
 
-        // конфликтующие брони (CONFIRMED/CREATED)
+        // конфликтующие брони = все активные, кроме отменённых
         var conflicts = bookingRepository.findConflicts(
                 psychologistId,
                 fromUtc,
                 toUtc,
-                List.of(BookingStatus.CONFIRMED, BookingStatus.CREATED)
+                List.of(
+                        BookingStatus.CANCELLED_BY_CLIENT,
+                        BookingStatus.CANCELLED_BY_PSYCHOLOGIST
+                )
         );
 
         List<SlotResponse> result = new ArrayList<>();
 
-        // идём по дням в диапазоне [from, to)
         LocalDate startDate = fromUtc.toLocalDate();
         LocalDate endDate = toUtc.toLocalDate();
 
@@ -79,20 +81,16 @@ public class PublicSlotsController {
                     OffsetDateTime slotStart = OffsetDateTime.of(date, t, ZoneOffset.UTC);
                     OffsetDateTime slotEnd = slotStart.plusMinutes(durationMin);
 
-                    // только внутри диапазона
                     if (slotStart.isBefore(fromUtc) || slotEnd.isAfter(toUtc)) {
                         t = t.plusMinutes(durationMin);
                         continue;
                     }
 
-                    // проверка конфликтов с бронированиями
                     boolean overlaps = conflicts.stream().anyMatch(b ->
                             b.getStartAt().isBefore(slotEnd) && b.getEndAt().isAfter(slotStart)
                     );
 
-                    if (!overlaps) {
-                        result.add(new SlotResponse(slotStart, slotEnd));
-                    }
+                    result.add(new SlotResponse(slotStart, slotEnd, !overlaps));
 
                     t = t.plusMinutes(durationMin);
                 }
@@ -114,5 +112,9 @@ public class PublicSlotsController {
         };
     }
 
-    public record SlotResponse(OffsetDateTime startAtUtc, OffsetDateTime endAtUtc) {}
+    public record SlotResponse(
+            OffsetDateTime startAtUtc,
+            OffsetDateTime endAtUtc,
+            boolean available
+    ) {}
 }

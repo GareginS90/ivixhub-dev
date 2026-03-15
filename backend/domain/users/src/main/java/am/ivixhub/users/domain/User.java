@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -20,6 +21,15 @@ public class User {
 
     @Column(nullable = false, unique = true, length = 255)
     private String email;
+
+    @Column(name = "full_name", length = 150)
+    private String fullName;
+
+    @Column(name = "username", nullable = false, unique = true, length = 50)
+    private String username;
+
+    @Column(name = "birth_date", nullable = false)
+    private LocalDate birthDate;
 
     @Column(length = 50)
     private String phone;
@@ -48,4 +58,3 @@ public class User {
         this.updatedAt = OffsetDateTime.now();
     }
 }
-

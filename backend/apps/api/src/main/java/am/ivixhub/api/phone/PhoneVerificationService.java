@@ -35,26 +35,31 @@ public class PhoneVerificationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        // Генерируем 6-значный код
+        String normalizedPhone = normalizePhone(phone);
+        validatePhone(normalizedPhone);
+        ensurePhoneIsAvailableForUser(user, normalizedPhone);
+
         String code = String.format("%06d", random.nextInt(1_000_000));
 
         PhoneVerificationCode pvc = new PhoneVerificationCode();
         pvc.setUserId(user.getId());
-        pvc.setPhone(phone);
+        pvc.setPhone(normalizedPhone);
         pvc.setCodeHash(encoder.encode(code));
         pvc.setAttemptsLeft(5);
         pvc.setExpiresAt(OffsetDateTime.now().plusMinutes(5));
 
         codeRepository.save(pvc);
 
-        // В реале тут будет SMS провайдер, пока логируем
-        smsSender.send(phone, "IviXHub code: " + code);
+        smsSender.send(normalizedPhone, "IviXHub code: " + code);
     }
 
     @Transactional
     public void verify(Long userId, String phone, String code) {
+        String normalizedPhone = normalizePhone(phone);
+        validatePhone(normalizedPhone);
+
         PhoneVerificationCode pvc = codeRepository
-                .findTopByUserIdAndPhoneAndUsedFalseOrderByCreatedAtDesc(userId, phone)
+                .findTopByUserIdAndPhoneAndUsedFalseOrderByCreatedAtDesc(userId, normalizedPhone)
                 .orElseThrow(() -> new IllegalArgumentException("No active code"));
 
         if (pvc.isUsed()) {
@@ -74,14 +79,41 @@ public class PhoneVerificationService {
             throw new IllegalArgumentException("Invalid code");
         }
 
-        pvc.setUsed(true);
-        codeRepository.save(pvc);
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        user.setPhone(phone);
+        ensurePhoneIsAvailableForUser(user, normalizedPhone);
+
+        pvc.setUsed(true);
+        codeRepository.save(pvc);
+
+        user.setPhone(normalizedPhone);
         user.setPhoneVerified(true);
         userRepository.save(user);
+    }
+
+    private void ensurePhoneIsAvailableForUser(User currentUser, String normalizedPhone) {
+        userRepository.findByPhone(normalizedPhone).ifPresent(existing -> {
+            if (!existing.getId().equals(currentUser.getId())) {
+                throw new IllegalArgumentException(
+                        "This phone number is already linked to another account. Please sign in to the existing account or use account recovery."
+                );
+            }
+        });
+    }
+
+    private void validatePhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            throw new IllegalArgumentException("Phone is required");
+        }
+
+        if (!phone.matches("^\\+[1-9][0-9]{7,14}$")) {
+            throw new IllegalArgumentException("Phone must be in international format, for example +374XXXXXXXX");
+        }
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null) return "";
+        return phone.replaceAll("[\\s\\-()]", "");
     }
 }

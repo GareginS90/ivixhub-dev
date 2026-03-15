@@ -12,11 +12,29 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/psychologists/documents")
 public class PsychologistDocumentUploadController {
+
+    private static final long MAX_DOC_SIZE = 10 * 1024 * 1024;
+    private static final long MAX_PHOTO_SIZE = 5 * 1024 * 1024;
+
+    private static final Set<String> DOC_TYPES = Set.of(
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+    );
+
+    private static final Set<String> PHOTO_TYPES = Set.of(
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+    );
 
     private final UserRepository userRepository;
     private final PsychologistRepository psychologistRepository;
@@ -45,9 +63,7 @@ public class PsychologistDocumentUploadController {
         Psychologist psychologist = psychologistRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalArgumentException("Psychologist profile not found"));
 
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("Empty file");
-        }
+        validateFile(docType, file);
 
         String subdir = "psychologist-docs/" + psychologist.getId();
 
@@ -98,7 +114,34 @@ public class PsychologistDocumentUploadController {
                 .toList();
     }
 
-    private java.io.InputStream safeInputStream(MultipartFile file) {
+    private void validateFile(PsychologistDocumentType docType, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Empty file");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            throw new IllegalArgumentException("Unknown file type");
+        }
+
+        if (docType == PsychologistDocumentType.PROFILE_PHOTO) {
+            if (!PHOTO_TYPES.contains(contentType)) {
+                throw new IllegalArgumentException("Profile photo must be JPG, PNG or WEBP");
+            }
+            if (file.getSize() > MAX_PHOTO_SIZE) {
+                throw new IllegalArgumentException("Profile photo must be <= 5MB");
+            }
+        } else {
+            if (!DOC_TYPES.contains(contentType)) {
+                throw new IllegalArgumentException("Document must be PDF, JPG, PNG or WEBP");
+            }
+            if (file.getSize() > MAX_DOC_SIZE) {
+                throw new IllegalArgumentException("Document must be <= 10MB");
+            }
+        }
+    }
+
+    private InputStream safeInputStream(MultipartFile file) {
         try {
             return file.getInputStream();
         } catch (Exception e) {

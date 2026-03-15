@@ -1,0 +1,13 @@
+node_modules
+.next
+dist
+build
+target
+.env
+.env.local
+.env.production
+.DS_Store
+*.log
+coverage
+.vscode
+.idea

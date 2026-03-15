@@ -25,6 +25,9 @@ public class MeController {
         return new MeResponse(
                 user.getId(),
                 user.getEmail(),
+                user.getFullName(),
+                user.getUsername(),
+                user.getBirthDate(),
                 user.getPhone(),
                 user.isPhoneVerified(),
                 user.getRole(),

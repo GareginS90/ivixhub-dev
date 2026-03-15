@@ -3,6 +3,7 @@ package am.ivixhub.api.bookings;
 import am.ivixhub.api.notifications.NotificationEventService;
 import am.ivixhub.bookings.domain.Booking;
 import am.ivixhub.bookings.domain.BookingStatus;
+import am.ivixhub.bookings.domain.SessionLanguage;
 import am.ivixhub.bookings.domain.SessionType;
 import am.ivixhub.bookings.repository.BookingRepository;
 import am.ivixhub.psychologists.repository.PsychologistAvailabilityRepository;
@@ -40,7 +41,7 @@ public class BookingService {
     }
 
     @Transactional
-    public Booking create(Long clientUserId, Long psychologistId, OffsetDateTime startAtUtc, SessionType type) {
+    public Booking create(Long clientUserId, Long psychologistId, OffsetDateTime startAtUtc, SessionType type, SessionLanguage language) {
         userRepository.findById(clientUserId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -66,6 +67,7 @@ public class BookingService {
         b.setClientUserId(clientUserId);
         b.setPsychologistId(psychologistId);
         b.setSessionType(type);
+        b.setSessionLanguage(language);
         b.setStartAt(startAtUtc);
         b.setEndAt(endAtUtc);
         b.setStatus(BookingStatus.CREATED);

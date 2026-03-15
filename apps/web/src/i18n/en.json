@@ -1,0 +1,22 @@
+{
+  "brand": "IviXHub",
+  "hero_title": "Find a psychologist who truly fits you",
+  "hero_subtitle": "Answer a short quiz and we'll recommend the right specialization.",
+  "cta_quiz": "Take the quiz",
+  "cta_catalog": "Browse psychologists",
+  "trust_1": "Verified specialists",
+  "trust_2": "Confidential",
+  "trust_3": "Secure payments",
+  "trust_4": "Escrow protection",
+  "quiz_title": "Quick quiz",
+  "quiz_subtitle": "5 questions — we recommend a specialization and filter by session language.",
+  "show_result": "Show result",
+  "catalog_title": "Psychologists",
+  "catalog_subtitle": "Filters: language / method / specialization.",
+  "filter_language": "Session language",
+  "filter_method": "Method (code)",
+  "filter_spec": "Specialization (code)",
+  "result_title": "Quiz result",
+  "show_psychologists": "Show matching psychologists",
+  "retry_quiz": "Retake quiz"
+}

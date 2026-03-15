@@ -29,6 +29,10 @@ public class Booking {
     @Column(name = "session_type", nullable = false, length = 20)
     private SessionType sessionType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "session_language", nullable = false, length = 10)
+    private SessionLanguage sessionLanguage = SessionLanguage.HY;
+
     // ВРЕМЯ В UTC
     @Column(name = "start_at", nullable = false)
     private OffsetDateTime startAt;
@@ -63,6 +67,9 @@ public class Booking {
 
     public SessionType getSessionType() { return sessionType; }
     public void setSessionType(SessionType sessionType) { this.sessionType = sessionType; }
+
+    public SessionLanguage getSessionLanguage() { return sessionLanguage; }
+    public void setSessionLanguage(SessionLanguage sessionLanguage) { this.sessionLanguage = sessionLanguage; }
 
     public OffsetDateTime getStartAt() { return startAt; }
     public void setStartAt(OffsetDateTime startAt) { this.startAt = startAt; }

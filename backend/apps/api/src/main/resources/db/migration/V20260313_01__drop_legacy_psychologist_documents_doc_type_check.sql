@@ -1,0 +1,2 @@
+alter table psychologist_documents
+drop constraint if exists psychologist_documents_doc_type_check;

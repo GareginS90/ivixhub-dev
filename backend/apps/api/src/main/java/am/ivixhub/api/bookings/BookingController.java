@@ -1,6 +1,7 @@
 package am.ivixhub.api.bookings;
 
 import am.ivixhub.bookings.domain.Booking;
+import am.ivixhub.bookings.domain.SessionLanguage;
 import am.ivixhub.bookings.domain.SessionType;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.core.Authentication;
@@ -24,7 +25,8 @@ public class BookingController {
     public record CreateBookingRequest(
             @NotNull Long psychologistId,
             @NotNull OffsetDateTime startAtUtc,
-            @NotNull SessionType type
+            @NotNull SessionType type,
+            @NotNull SessionLanguage language
     ) {}
 
     public record BookingResponse(
@@ -33,13 +35,20 @@ public class BookingController {
             OffsetDateTime startAtUtc,
             OffsetDateTime endAtUtc,
             SessionType type,
+            SessionLanguage language,
             String status
     ) {}
 
     @PostMapping
     public BookingResponse create(Authentication auth, @RequestBody CreateBookingRequest req) {
         Long clientUserId = (Long) auth.getPrincipal();
-        Booking b = bookingService.create(clientUserId, req.psychologistId(), req.startAtUtc(), req.type());
+        Booking b = bookingService.create(
+                clientUserId,
+                req.psychologistId(),
+                req.startAtUtc(),
+                req.type(),
+                req.language()
+        );
         return map(b);
     }
 
@@ -55,9 +64,6 @@ public class BookingController {
         return map(bookingService.cancelByClient(clientUserId, bookingId));
     }
 
-    /**
-     * Psychologist completes session (after endAtUtc).
-     */
     @PostMapping("/{bookingId}/complete")
     public BookingCompletionService.CompleteBookingResponse complete(Authentication auth,
                                                                      @PathVariable("bookingId") Long bookingId) {
@@ -72,8 +78,8 @@ public class BookingController {
                 b.getStartAt(),
                 b.getEndAt(),
                 b.getSessionType(),
+                b.getSessionLanguage(),
                 b.getStatus().name()
         );
     }
 }
-

@@ -1,0 +1,8 @@
+ALTER TABLE psychologist_methods
+DROP CONSTRAINT IF EXISTS psychologist_methods_method_check;
+
+ALTER TABLE psychologist_specializations
+DROP CONSTRAINT IF EXISTS psychologist_specialization_check;
+
+ALTER TABLE psychologist_specializations
+DROP CONSTRAINT IF EXISTS psychologist_specializations_specialization_check;

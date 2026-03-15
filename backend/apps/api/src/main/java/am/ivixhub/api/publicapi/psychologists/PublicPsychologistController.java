@@ -36,7 +36,11 @@ public class PublicPsychologistController {
                         p.getId(),
                         p.getExperienceYears(),
                         p.getBio(),
-                        p.getVerifiedAt()
+                        p.getVerifiedAt(),
+                        "Psychologist #" + p.getId(), // TODO: заменить на displayName когда появится поле
+                        p.getLanguages(),
+                        null, // TODO: подключим реальные значения когда будет модель отзывов/рейтинга
+                        0
                 ))
                 .toList();
     }
@@ -55,7 +59,7 @@ public class PublicPsychologistController {
                 p.getExperienceYears(),
                 p.getBio(),
                 p.getLanguages(),
-                p.getMethods(),          // now Set<String> codes
+                p.getMethods(),          // Set<String> codes
                 p.getSpecializations(),  // Set<String> codes
                 p.getVerifiedAt()
         );

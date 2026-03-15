@@ -1,4 +1,3 @@
-
 package am.ivixhub.api.auth;
 
 import am.ivixhub.api.security.JwtService;
@@ -8,6 +7,8 @@ import am.ivixhub.users.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 @Service
 public class AuthService {
@@ -23,12 +24,28 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest req) {
-        userRepository.findByEmail(req.email()).ifPresent(u -> {
-            throw new IllegalArgumentException("Email already registered");
+        String normalizedEmail = req.email().trim().toLowerCase();
+        String normalizedUsername = req.username().trim().toLowerCase();
+        String normalizedFullName = req.fullName() == null ? null : req.fullName().trim();
+        LocalDate birthDate = req.birthDate();
+
+        if (birthDate.isBefore(LocalDate.of(1940, 1, 1)) || birthDate.isAfter(LocalDate.of(2010, 12, 31))) {
+            throw new IllegalArgumentException("Birth date is out of allowed range");
+        }
+
+        userRepository.findByEmail(normalizedEmail).ifPresent(u -> {
+            throw new IllegalArgumentException("This email is already registered");
+        });
+
+        userRepository.findByUsername(normalizedUsername).ifPresent(u -> {
+            throw new IllegalArgumentException("This username is already taken");
         });
 
         User user = new User();
-        user.setEmail(req.email());
+        user.setEmail(normalizedEmail);
+        user.setFullName((normalizedFullName == null || normalizedFullName.isBlank()) ? null : normalizedFullName);
+        user.setUsername(normalizedUsername);
+        user.setBirthDate(birthDate);
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.CLIENT);
         user.setActive(true);
@@ -43,7 +60,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest req) {
-        User user = userRepository.findByEmail(req.email())
+        User user = userRepository.findByEmail(req.email().trim().toLowerCase())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
