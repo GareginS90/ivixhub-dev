@@ -1,6 +1,7 @@
 package am.ivixhub.api.publicapi.psychologists;
 
 import am.ivixhub.api.error.NotFoundException;
+import am.ivixhub.api.reviews.ReviewService;
 import am.ivixhub.psychologists.domain.PsychologistLanguage;
 import am.ivixhub.psychologists.domain.PsychologistStatus;
 import am.ivixhub.psychologists.repository.PsychologistRepository;
@@ -12,15 +13,14 @@ import java.util.List;
 public class PublicPsychologistController {
 
     private final PsychologistRepository psychologistRepository;
+    private final ReviewService reviewService;
 
-    public PublicPsychologistController(PsychologistRepository psychologistRepository) {
+    public PublicPsychologistController(PsychologistRepository psychologistRepository,
+                                        ReviewService reviewService) {
         this.psychologistRepository = psychologistRepository;
+        this.reviewService = reviewService;
     }
 
-    /**
-     * GET /api/public/psychologists?language=HY&method=cbt&specialization=anxiety
-     * method + specialization are catalog codes (lowercase).
-     */
     @GetMapping("/api/public/psychologists")
     public List<PublicPsychologistResponse> listVerified(
             @RequestParam(value = "language", required = false) PsychologistLanguage language,
@@ -32,16 +32,20 @@ public class PublicPsychologistController {
 
         return psychologistRepository.searchVerified(PsychologistStatus.VERIFIED, language, methodCode, specCode)
                 .stream()
-                .map(p -> new PublicPsychologistResponse(
-                        p.getId(),
-                        p.getExperienceYears(),
-                        p.getBio(),
-                        p.getVerifiedAt(),
-                        "Psychologist #" + p.getId(), // TODO: заменить на displayName когда появится поле
-                        p.getLanguages(),
-                        null, // TODO: подключим реальные значения когда будет модель отзывов/рейтинга
-                        0
-                ))
+                .map(p -> {
+                    var reviews = reviewService.getPsychologistPublicReviews(p.getId());
+
+                    return new PublicPsychologistResponse(
+                            p.getId(),
+                            p.getExperienceYears(),
+                            p.getBio(),
+                            p.getVerifiedAt(),
+                            resolveDisplayName(p),
+                            p.getLanguages(),
+                            reviews.ratingAvg(),
+                            reviews.reviewsCount()
+                    );
+                })
                 .toList();
     }
 
@@ -54,14 +58,28 @@ public class PublicPsychologistController {
             throw new NotFoundException("Psychologist not found");
         }
 
+        var reviews = reviewService.getPsychologistPublicReviews(p.getId());
+
         return new PublicPsychologistProfileResponse(
                 p.getId(),
+                resolveDisplayName(p),
                 p.getExperienceYears(),
                 p.getBio(),
                 p.getLanguages(),
-                p.getMethods(),          // Set<String> codes
-                p.getSpecializations(),  // Set<String> codes
-                p.getVerifiedAt()
+                p.getMethods(),
+                p.getSpecializations(),
+                p.getVerifiedAt(),
+                reviews.ratingAvg(),
+                reviews.reviewsCount(),
+                reviews.recentReviews().stream()
+                        .map(x -> new PublicPsychologistReviewResponse(
+                                x.id(),
+                                x.rating(),
+                                x.comment(),
+                                x.authorDisplayName(),
+                                x.createdAt()
+                        ))
+                        .toList()
         );
     }
 
@@ -69,5 +87,15 @@ public class PublicPsychologistController {
         if (s == null) return null;
         String x = s.trim().toLowerCase();
         return x.isBlank() ? null : x;
+    }
+
+    private String resolveDisplayName(am.ivixhub.psychologists.domain.Psychologist p) {
+        if (p.getUser() != null && p.getUser().getFullName() != null) {
+            String fullName = p.getUser().getFullName().trim();
+            if (!fullName.isBlank()) {
+                return fullName;
+            }
+        }
+        return "Psychologist";
     }
 }
