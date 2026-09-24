@@ -2,6 +2,7 @@ package am.ivixhub.api.auth;
 
 import am.ivixhub.api.security.JwtService;
 import am.ivixhub.users.domain.User;
+import am.ivixhub.users.domain.UserGender;
 import am.ivixhub.users.domain.UserRole;
 import am.ivixhub.users.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -28,12 +29,20 @@ public class AuthService {
         String normalizedUsername = req.username().trim().toLowerCase();
         String normalizedFullName = req.fullName() == null ? null : req.fullName().trim();
         LocalDate birthDate = req.birthDate();
+        UserGender gender = req.gender() == null ? UserGender.UNSPECIFIED : req.gender();
+        UserRole requestedRole = validateSelfServiceRole(req.role());
 
         if (birthDate.isBefore(LocalDate.of(1940, 1, 1)) || birthDate.isAfter(LocalDate.of(2010, 12, 31))) {
             throw new IllegalArgumentException("Birth date is out of allowed range");
         }
 
-        userRepository.findByEmail(normalizedEmail).ifPresent(u -> {
+        userRepository.findByEmail(normalizedEmail).ifPresent(existing -> {
+            String existingLabel = roleLabel(existing.getRole());
+            if (existing.getRole() != requestedRole) {
+                throw new IllegalArgumentException(
+                        "This email is already registered for a " + existingLabel + " account"
+                );
+            }
             throw new IllegalArgumentException("This email is already registered");
         });
 
@@ -46,8 +55,9 @@ public class AuthService {
         user.setFullName((normalizedFullName == null || normalizedFullName.isBlank()) ? null : normalizedFullName);
         user.setUsername(normalizedUsername);
         user.setBirthDate(birthDate);
+        user.setGender(gender);
         user.setPasswordHash(passwordEncoder.encode(req.password()));
-        user.setRole(UserRole.CLIENT);
+        user.setRole(requestedRole);
         user.setActive(true);
 
         User saved = userRepository.save(user);
@@ -60,11 +70,19 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest req) {
+        UserRole requestedRole = validateSelfServiceRole(req.role());
+
         User user = userRepository.findByEmail(req.email().trim().toLowerCase())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid credentials");
+        }
+
+        if (user.getRole() != requestedRole) {
+            throw new IllegalArgumentException(
+                    "This account is registered as " + roleLabel(user.getRole()) + ", not " + roleLabel(requestedRole)
+            );
         }
 
         String access = jwtService.generateAccessToken(user);
@@ -88,5 +106,25 @@ public class AuthService {
 
         String newAccess = jwtService.generateAccessToken(user);
         return new RefreshResponse(newAccess);
+    }
+
+    private UserRole validateSelfServiceRole(UserRole role) {
+        if (role == null) {
+            throw new IllegalArgumentException("Role is required");
+        }
+
+        if (role != UserRole.CLIENT && role != UserRole.PSYCHOLOGIST) {
+            throw new IllegalArgumentException("Unsupported self-service role");
+        }
+
+        return role;
+    }
+
+    private String roleLabel(UserRole role) {
+        return switch (role) {
+            case CLIENT -> "client";
+            case PSYCHOLOGIST -> "psychologist";
+            case ADMIN -> "admin";
+        };
     }
 }

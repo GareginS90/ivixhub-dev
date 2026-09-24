@@ -1,6 +1,7 @@
 package am.ivixhub.api.publicapi.psychologists;
 
 import am.ivixhub.psychologists.domain.PsychologistLanguage;
+import am.ivixhub.users.domain.UserGender;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -14,6 +15,9 @@ public record PublicPsychologistProfileResponse(
         Set<PsychologistLanguage> languages,
         Set<String> methods,
         Set<String> specializations,
+        Integer age,
+        UserGender gender,
+        String avatarUrl,
         OffsetDateTime verifiedAt,
         Double ratingAvg,
         Integer reviewsCount,

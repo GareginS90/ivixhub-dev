@@ -8,13 +8,23 @@ function tryParse(text: string) {
   }
 }
 
+type RegisterRequest = {
+  email: string;
+  fullName: string | null;
+  username: string;
+  birthDate: string;
+  gender: "MALE" | "FEMALE" | "UNSPECIFIED";
+  password: string;
+  role: "CLIENT" | "PSYCHOLOGIST";
+};
+
 export async function POST(req: Request) {
   const base = process.env.IVIXHUB_API_BASE_URL;
   if (!base) {
     return NextResponse.json({ message: "IVIXHUB_API_BASE_URL is not set" }, { status: 500 });
   }
 
-  const body = await req.json();
+  const body = (await req.json()) as RegisterRequest;
 
   const r = await fetch(`${base}/api/public/auth/register`, {
     method: "POST",

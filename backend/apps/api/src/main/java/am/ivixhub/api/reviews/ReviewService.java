@@ -76,6 +76,28 @@ public class ReviewService {
         return reviewRepository.save(review);
     }
 
+    @Transactional
+    public Review reply(Long replierUserId, Long reviewId, String replyComment) {
+        String normalizedReply = normalizeRequiredReply(replyComment);
+
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("Review not found"));
+
+        if (!review.getSubjectUserId().equals(replierUserId)) {
+            throw new IllegalArgumentException("No access to reply to this review");
+        }
+
+        if (review.getReplyComment() != null && !review.getReplyComment().isBlank()) {
+            throw new IllegalArgumentException("Reply already exists for this review");
+        }
+
+        review.setReplyComment(normalizedReply);
+        review.setReplyAuthorUserId(replierUserId);
+        review.setRepliedAt(OffsetDateTime.now());
+
+        return reviewRepository.save(review);
+    }
+
     @Transactional(readOnly = true)
     public Review findMyReview(Long authorUserId, Long bookingId) {
         var booking = bookingRepository.findById(bookingId)
@@ -93,6 +115,14 @@ public class ReviewService {
         }
 
         return reviewRepository.findByBookingIdAndAuthorUserId(bookingId, authorUserId).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReceivedReviewItem> getMyReceivedReviews(Long userId) {
+        return reviewRepository.findAllBySubjectUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::mapReceivedReview)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +152,57 @@ public class ReviewService {
         return new PublicPsychologistReviewBundle(ratingAvg, (int) reviewsCount, items);
     }
 
+    @Transactional(readOnly = true)
+    public ClientReviewBundle getClientReviewSummaryForPsychologist(Long psychologistUserId, Long clientUserId) {
+        var psychologistUser = userRepository.findById(psychologistUserId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        var psychologist = psychologistRepository.findByUser(psychologistUser)
+                .orElseThrow(() -> new IllegalArgumentException("Psychologist profile not found"));
+
+        boolean related = bookingRepository.existsByClientUserIdAndPsychologistId(clientUserId, psychologist.getId());
+        if (!related) {
+            throw new IllegalArgumentException("No access to client review summary");
+        }
+
+        var summary = reviewRepository.summarizeBySubjectAndTargetRole(
+                clientUserId,
+                ReviewTargetRole.CLIENT
+        );
+
+        Double ratingAvg = summary != null ? summary.getRatingAvg() : null;
+        long reviewsCount = summary != null ? summary.getReviewsCount() : 0L;
+
+        List<ClientReviewItem> items = reviewRepository
+                .findTop5BySubjectUserIdAndTargetRoleOrderByCreatedAtDesc(
+                        clientUserId,
+                        ReviewTargetRole.CLIENT
+                )
+                .stream()
+                .map(this::mapClientReview)
+                .toList();
+
+        return new ClientReviewBundle(ratingAvg, (int) reviewsCount, items);
+    }
+
+    private ReceivedReviewItem mapReceivedReview(Review review) {
+        String authorDisplayName = userRepository.findById(review.getAuthorUserId())
+                .map(this::resolveUserDisplayName)
+                .orElse("User");
+
+        return new ReceivedReviewItem(
+                review.getId(),
+                review.getBookingId(),
+                review.getTargetRole().name(),
+                review.getRating(),
+                review.getComment(),
+                authorDisplayName,
+                review.getCreatedAt(),
+                review.getReplyComment(),
+                review.getRepliedAt()
+        );
+    }
+
     private PublicPsychologistReviewItem mapPublicReview(Review review) {
         String authorDisplayName = userRepository.findById(review.getAuthorUserId())
                 .map(this::resolveUserDisplayName)
@@ -132,7 +213,25 @@ public class ReviewService {
                 review.getRating(),
                 review.getComment(),
                 authorDisplayName,
-                review.getCreatedAt()
+                review.getCreatedAt(),
+                review.getReplyComment(),
+                review.getRepliedAt()
+        );
+    }
+
+    private ClientReviewItem mapClientReview(Review review) {
+        String authorDisplayName = userRepository.findById(review.getAuthorUserId())
+                .map(this::resolveUserDisplayName)
+                .orElse("User");
+
+        return new ClientReviewItem(
+                review.getId(),
+                review.getRating(),
+                review.getComment(),
+                authorDisplayName,
+                review.getCreatedAt(),
+                review.getReplyComment(),
+                review.getRepliedAt()
         );
     }
 
@@ -163,6 +262,14 @@ public class ReviewService {
         return normalized;
     }
 
+    private String normalizeRequiredReply(String comment) {
+        String normalized = normalizeComment(comment);
+        if (normalized == null) {
+            throw new IllegalArgumentException("Reply comment is required");
+        }
+        return normalized;
+    }
+
     public record PublicPsychologistReviewBundle(
             Double ratingAvg,
             Integer reviewsCount,
@@ -175,7 +282,40 @@ public class ReviewService {
             Integer rating,
             String comment,
             String authorDisplayName,
-            OffsetDateTime createdAt
+            OffsetDateTime createdAt,
+            String replyComment,
+            OffsetDateTime repliedAt
+    ) {
+    }
+
+    public record ClientReviewBundle(
+            Double ratingAvg,
+            Integer reviewsCount,
+            List<ClientReviewItem> recentReviews
+    ) {
+    }
+
+    public record ClientReviewItem(
+            Long id,
+            Integer rating,
+            String comment,
+            String authorDisplayName,
+            OffsetDateTime createdAt,
+            String replyComment,
+            OffsetDateTime repliedAt
+    ) {
+    }
+
+    public record ReceivedReviewItem(
+            Long id,
+            Long bookingId,
+            String targetRole,
+            Integer rating,
+            String comment,
+            String authorDisplayName,
+            OffsetDateTime createdAt,
+            String replyComment,
+            OffsetDateTime repliedAt
     ) {
     }
 }

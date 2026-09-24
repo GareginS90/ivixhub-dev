@@ -1,0 +1,13 @@
+package am.ivixhub.api.notifications;
+
+public enum NotificationType {
+    BOOKING_CREATED,
+    PAYMENT_COMPLETED,
+    SESSION_REMINDER_24H,
+    SESSION_REMINDER_1H,
+    SESSION_REMINDER_10M,
+    SESSION_STARTING,
+    SESSION_FINISHED,
+    SESSION_CANCELLED,
+    VIDEO_ROOM_READY
+}

@@ -2,60 +2,117 @@ package am.ivixhub.api.notifications;
 
 import am.ivixhub.notifications.domain.Notification;
 import am.ivixhub.notifications.repository.NotificationRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import am.ivixhub.users.domain.User;
+import am.ivixhub.users.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
 public class NotificationService {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
-
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(NotificationRepository notificationRepository,
+                               UserRepository userRepository) {
         this.notificationRepository = notificationRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
     public void notifyInApp(Long userId, String type, String title, String body) {
-        Notification n = new Notification();
-        n.setUserId(userId);
-        n.setType(type);
-        n.setTitle(title);
-        n.setBody(body);
-        n.setRead(false);
-        notificationRepository.save(n);
-    }
-
-    // MOCK email
-    public void sendEmailMock(String toEmail, String subject, String body) {
-        log.info("[EMAIL MOCK] to={} subject={} body={}", toEmail, subject, body);
-    }
-
-    // MOCK sms
-    public void sendSmsMock(String phone, String message) {
-        log.info("[SMS MOCK] to={} message={}", phone, message);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Notification> my(Long userId) {
-        return notificationRepository.findTop50ByUserIdOrderByIdDesc(userId);
+        notifyInApp(userId, type, title, body, null);
     }
 
     @Transactional
-    public void markRead(Long userId, Long notificationId) {
-        Notification n = notificationRepository.findById(notificationId)
+    public void notifyInApp(Long userId, String type, String title, String body, Long relatedBookingId) {
+        ensureUserExists(userId);
+
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(type == null || type.isBlank() ? "GENERAL" : type.trim().toUpperCase());
+        notification.setTitle(title);
+        notification.setBody(body);
+        notification.setRelatedBookingId(relatedBookingId);
+        notification.setRead(false);
+
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void createInAppNotification(Long recipientUserId,
+                                        NotificationType type,
+                                        String title,
+                                        String message,
+                                        Long relatedBookingId,
+                                        OffsetDateTime scheduledAt) {
+        notifyInApp(
+                recipientUserId,
+                type == null ? "GENERAL" : type.name(),
+                title,
+                message,
+                relatedBookingId
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationListResponse getMyNotifications(Long userId) {
+        List<NotificationResponse> items = notificationRepository
+                .findTop50ByUserIdOrderByIdDesc(userId)
+                .stream()
+                .map(NotificationResponse::from)
+                .toList();
+
+        long unreadCount = notificationRepository.countByUserIdAndReadFalse(userId);
+
+        return new NotificationListResponse(unreadCount, items);
+    }
+
+    @Transactional
+    public NotificationResponse markAsRead(Long userId, Long notificationId) {
+        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
 
-        if (!n.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Not your notification");
+        if (!notification.isRead()) {
+            notification.setRead(true);
+            notificationRepository.save(notification);
         }
 
-        n.setRead(true);
-        notificationRepository.save(n);
+        return NotificationResponse.from(notification);
+    }
+
+    @Transactional
+    public NotificationListResponse markAllAsRead(Long userId) {
+        List<Notification> notifications = notificationRepository.findTop50ByUserIdOrderByIdDesc(userId);
+
+        boolean changed = false;
+        for (Notification notification : notifications) {
+            if (!notification.isRead()) {
+                notification.setRead(true);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            notificationRepository.saveAll(notifications);
+        }
+
+        List<NotificationResponse> items = notifications.stream()
+                .map(NotificationResponse::from)
+                .toList();
+
+        return new NotificationListResponse(0, items);
+    }
+
+    private void ensureUserExists(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!user.isActive()) {
+            throw new IllegalArgumentException("User is inactive");
+        }
     }
 }

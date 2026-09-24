@@ -13,10 +13,18 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/psychologists/availability")
 public class PsychologistAvailabilityController {
+
+    private static final Set<PsychologistStatus> EDITABLE_STATUSES = Set.of(
+            PsychologistStatus.DRAFT,
+            PsychologistStatus.PENDING_VERIFICATION,
+            PsychologistStatus.VERIFIED,
+            PsychologistStatus.REJECTED
+    );
 
     private final UserRepository userRepository;
     private final PsychologistRepository psychologistRepository;
@@ -40,9 +48,7 @@ public class PsychologistAvailabilityController {
         Psychologist psychologist = psychologistRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalArgumentException("Psychologist profile not found"));
 
-        if (psychologist.getStatus() != PsychologistStatus.VERIFIED) {
-            throw new IllegalArgumentException("Psychologist must be VERIFIED to set availability");
-        }
+        assertAvailabilityEditable(psychologist);
 
         LocalTime start = LocalTime.parse(req.startTimeUtc());
         LocalTime end = LocalTime.parse(req.endTimeUtc());
@@ -60,13 +66,7 @@ public class PsychologistAvailabilityController {
 
         PsychologistAvailability saved = availabilityRepository.save(a);
 
-        return new AvailabilityResponse(
-                saved.getId(),
-                saved.getPsychologistId(),
-                saved.getDayOfWeek(),
-                saved.getStartTimeUtc().toString(),
-                saved.getEndTimeUtc().toString()
-        );
+        return map(saved);
     }
 
     @GetMapping
@@ -81,13 +81,48 @@ public class PsychologistAvailabilityController {
 
         return availabilityRepository.findAllByPsychologistIdAndActiveTrue(psychologist.getId())
                 .stream()
-                .map(x -> new AvailabilityResponse(
-                        x.getId(),
-                        x.getPsychologistId(),
-                        x.getDayOfWeek(),
-                        x.getStartTimeUtc().toString(),
-                        x.getEndTimeUtc().toString()
-                ))
+                .map(this::map)
                 .toList();
+    }
+
+    @DeleteMapping("/{availabilityId}")
+    public void delete(Authentication auth, @PathVariable("availabilityId") Long availabilityId) {
+        Long userId = (Long) auth.getPrincipal();
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Psychologist psychologist = psychologistRepository.findByUser(user)
+                .orElseThrow(() -> new IllegalArgumentException("Psychologist profile not found"));
+
+        assertAvailabilityEditable(psychologist);
+
+        PsychologistAvailability availability = availabilityRepository.findById(availabilityId)
+                .orElseThrow(() -> new IllegalArgumentException("Availability slot not found"));
+
+        if (!availability.getPsychologistId().equals(psychologist.getId())) {
+            throw new IllegalArgumentException("Not your availability slot");
+        }
+
+        availability.setActive(false);
+        availabilityRepository.save(availability);
+    }
+
+    private void assertAvailabilityEditable(Psychologist psychologist) {
+        if (!EDITABLE_STATUSES.contains(psychologist.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Availability is not editable in current status: " + psychologist.getStatus()
+            );
+        }
+    }
+
+    private AvailabilityResponse map(PsychologistAvailability x) {
+        return new AvailabilityResponse(
+                x.getId(),
+                x.getPsychologistId(),
+                x.getDayOfWeek(),
+                x.getStartTimeUtc().toString(),
+                x.getEndTimeUtc().toString()
+        );
     }
 }

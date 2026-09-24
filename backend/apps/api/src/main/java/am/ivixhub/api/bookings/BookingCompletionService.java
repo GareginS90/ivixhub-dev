@@ -1,7 +1,7 @@
 package am.ivixhub.api.bookings;
 
 import am.ivixhub.api.audit.AuditService;
-import am.ivixhub.api.notifications.NotificationService;
+import am.ivixhub.api.notifications.NotificationEventService;
 import am.ivixhub.api.payments.PaymentService;
 import am.ivixhub.bookings.domain.BookingStatus;
 import am.ivixhub.bookings.repository.BookingRepository;
@@ -20,20 +20,20 @@ public class BookingCompletionService {
     private final UserRepository userRepository;
     private final PsychologistRepository psychologistRepository;
     private final PaymentService paymentService;
-    private final NotificationService notificationService;
+    private final NotificationEventService notificationEvents;
     private final AuditService auditService;
 
     public BookingCompletionService(BookingRepository bookingRepository,
                                     UserRepository userRepository,
                                     PsychologistRepository psychologistRepository,
                                     PaymentService paymentService,
-                                    NotificationService notificationService,
+                                    NotificationEventService notificationEvents,
                                     AuditService auditService) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.psychologistRepository = psychologistRepository;
         this.paymentService = paymentService;
-        this.notificationService = notificationService;
+        this.notificationEvents = notificationEvents;
         this.auditService = auditService;
     }
 
@@ -65,12 +65,8 @@ public class BookingCompletionService {
 
         EscrowStatus escrowStatus = paymentService.releaseEscrowIfEligible(psychologist.getId(), bookingId);
 
-        notificationService.notifyInApp(
-                booking.getClientUserId(),
-                "BOOKING_COMPLETED",
-                "Session completed",
-                "Your session for booking #" + bookingId + " is completed."
-        );
+        notificationEvents.bookingCompleted(booking.getClientUserId(), bookingId);
+        notificationEvents.bookingCompleted(psychologistUserId, bookingId);
 
         auditService.log(
                 psychologistUserId,
@@ -91,4 +87,3 @@ public class BookingCompletionService {
 
     public record CompleteBookingResponse(Long bookingId, String bookingStatus, String escrowStatus) {}
 }
-

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,7 +15,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findAllByClientUserIdOrderByStartAtDesc(Long clientUserId);
 
+    List<Booking> findAllByPsychologistIdOrderByStartAtDesc(Long psychologistId);
+
     Optional<Booking> findByIdAndClientUserId(Long id, Long clientUserId);
+
+    Optional<Booking> findByIdAndPsychologistId(Long id, Long psychologistId);
+
+    List<Booking> findAllByStatusInAndCreatedAtLessThan(Collection<BookingStatus> statuses, OffsetDateTime createdAt);
+
+    List<Booking> findAllByStatusInAndStartAtLessThanEqual(Collection<BookingStatus> statuses, OffsetDateTime startAt);
+
+    boolean existsByClientUserIdAndPsychologistId(Long clientUserId, Long psychologistId);
 
     @Query("""
         select b from Booking b
@@ -40,4 +51,3 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                    @Param("endAt") OffsetDateTime endAt,
                                    @Param("excludedStatuses") List<BookingStatus> excludedStatuses);
 }
-

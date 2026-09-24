@@ -18,7 +18,8 @@ const TXT = {
     login: "У меня уже есть аккаунт",
     registerPsych: "Создать аккаунт психолога",
     profile: "Перейти к профилю психолога",
-    back: "Вернуться назад"
+    back: "Вернуться назад",
+    deleteAccount: "Удалить аккаунт"
   },
   en: {
     title: "Psychologist registration",
@@ -33,7 +34,8 @@ const TXT = {
     login: "I already have an account",
     registerPsych: "Create psychologist account",
     profile: "Go to psychologist profile",
-    back: "Go back"
+    back: "Go back",
+    deleteAccount: "Delete account"
   },
   hy: {
     title: "Հոգեբանի գրանցում",
@@ -48,7 +50,8 @@ const TXT = {
     login: "Ես արդեն ունեմ հաշիվ",
     registerPsych: "Ստեղծել հոգեբանի հաշիվ",
     profile: "Անցնել հոգեբանի պրոֆիլին",
-    back: "Վերադառնալ"
+    back: "Վերադառնալ",
+    deleteAccount: "Հեռացնել հաշիվը"
   }
 } as const;
 
@@ -97,10 +100,10 @@ export default function PsychologistOnboardingEntryPage() {
           {tr.note}
         </div>
 
-        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Link
             href="/auth/login?next=/psychologists/onboarding/profile"
-            className="inline-flex justify-center rounded-2xl bg-black text-white px-5 py-3 hover:opacity-90"
+            className="inline-flex justify-center rounded-2xl bg-black px-5 py-3 text-white hover:opacity-90"
           >
             {tr.login}
           </Link>

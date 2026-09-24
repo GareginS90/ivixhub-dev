@@ -28,10 +28,6 @@ public class PublicSlotsController {
         this.bookingRepository = bookingRepository;
     }
 
-    /**
-     * Example:
-     * GET /api/public/psychologists/2/slots?from=2025-12-21T00:00:00Z&to=2025-12-28T00:00:00Z&type=SELF
-     */
     @GetMapping("/api/public/psychologists/{id}/slots")
     public List<SlotResponse> slots(@PathVariable("id") Long psychologistId,
                                     @RequestParam("from") OffsetDateTime fromUtc,
@@ -47,20 +43,20 @@ public class PublicSlotsController {
 
         int durationMin = switch (type) {
             case SELF -> 50;
-            case COUPLES -> 60;
-            case GROUP -> 90;
+            case COUPLES -> 90;
+            case GROUP -> 180;
         };
 
         var availability = availabilityRepository.findAllByPsychologistIdAndActiveTrue(psychologistId);
 
-        // конфликтующие брони = все активные, кроме отменённых
         var conflicts = bookingRepository.findConflicts(
                 psychologistId,
                 fromUtc,
                 toUtc,
                 List.of(
                         BookingStatus.CANCELLED_BY_CLIENT,
-                        BookingStatus.CANCELLED_BY_PSYCHOLOGIST
+                        BookingStatus.CANCELLED_BY_PSYCHOLOGIST,
+                        BookingStatus.EXPIRED_PAYMENT
                 )
         );
 
@@ -73,11 +69,13 @@ public class PublicSlotsController {
             WeekDay wd = mapDay(date.getDayOfWeek());
 
             for (var a : availability) {
-                if (a.getDayOfWeek() != wd) continue;
+                if (a.getDayOfWeek() != wd) {
+                    continue;
+                }
 
                 LocalTime t = a.getStartTimeUtc();
-                while (t.plusMinutes(durationMin).isBefore(a.getEndTimeUtc()) || t.plusMinutes(durationMin).equals(a.getEndTimeUtc())) {
 
+                while (t.plusMinutes(durationMin).isBefore(a.getEndTimeUtc()) || t.plusMinutes(durationMin).equals(a.getEndTimeUtc())) {
                     OffsetDateTime slotStart = OffsetDateTime.of(date, t, ZoneOffset.UTC);
                     OffsetDateTime slotEnd = slotStart.plusMinutes(durationMin);
 
@@ -91,7 +89,6 @@ public class PublicSlotsController {
                     );
 
                     result.add(new SlotResponse(slotStart, slotEnd, !overlaps));
-
                     t = t.plusMinutes(durationMin);
                 }
             }
@@ -116,5 +113,6 @@ public class PublicSlotsController {
             OffsetDateTime startAtUtc,
             OffsetDateTime endAtUtc,
             boolean available
-    ) {}
+    ) {
+    }
 }

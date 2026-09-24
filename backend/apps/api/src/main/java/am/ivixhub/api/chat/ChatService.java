@@ -1,5 +1,6 @@
 package am.ivixhub.api.chat;
 
+import am.ivixhub.bookings.domain.BookingStatus;
 import am.ivixhub.bookings.repository.BookingRepository;
 import am.ivixhub.chat.domain.ChatMessage;
 import am.ivixhub.chat.repository.ChatMessageRepository;
@@ -42,13 +43,12 @@ public class ChatService {
             raw = chatMessageRepository.findTop100ByBookingIdAndIdLessThanOrderByIdDesc(bookingId, beforeId);
         }
 
-        // raw: newest first, take limit, then reverse to chronological
         if (raw.size() > lim) {
             raw = raw.subList(0, lim);
         }
         Collections.reverse(raw);
 
-        Long nextBeforeId = raw.isEmpty() ? beforeId : raw.get(0).getId(); // самый старый id в ответе
+        Long nextBeforeId = raw.isEmpty() ? beforeId : raw.get(0).getId();
 
         var items = raw.stream()
                 .map(m -> new ChatMessageResponse(
@@ -67,6 +67,10 @@ public class ChatService {
     @Transactional
     public ChatMessageResponse send(Long userId, Long bookingId, String text) {
         var booking = ensureAccess(userId, bookingId);
+
+        if (isChatClosed(booking.getStatus())) {
+            throw new IllegalArgumentException("Chat is closed for this booking");
+        }
 
         String role = booking.getClientUserId().equals(userId) ? "CLIENT" : "PSYCHOLOGIST";
 
@@ -93,6 +97,12 @@ public class ChatService {
         if (lim < 1) lim = 1;
         if (lim > 100) lim = 100;
         return lim;
+    }
+
+    private boolean isChatClosed(BookingStatus status) {
+        return status == BookingStatus.CANCELLED_BY_CLIENT
+                || status == BookingStatus.CANCELLED_BY_PSYCHOLOGIST
+                || status == BookingStatus.EXPIRED_PAYMENT;
     }
 
     private am.ivixhub.bookings.domain.Booking ensureAccess(Long userId, Long bookingId) {
@@ -131,4 +141,3 @@ public class ChatService {
             Long nextBeforeId
     ) {}
 }
-

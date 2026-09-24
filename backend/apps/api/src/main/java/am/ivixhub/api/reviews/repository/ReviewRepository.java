@@ -24,6 +24,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     List<Review> findAllBySubjectUserIdAndTargetRoleOrderByCreatedAtDesc(Long subjectUserId, ReviewTargetRole targetRole);
 
+    List<Review> findAllBySubjectUserIdOrderByCreatedAtDesc(Long subjectUserId);
+
     @Query("""
         select avg(r.rating) as ratingAvg, count(r) as reviewsCount
         from Review r

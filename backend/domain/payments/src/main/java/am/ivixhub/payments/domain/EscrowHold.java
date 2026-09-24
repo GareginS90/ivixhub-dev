@@ -33,6 +33,15 @@ public class EscrowHold {
     @Column(nullable = false, length = 20)
     private EscrowStatus status = EscrowStatus.HOLD;
 
+    @Column(name="refund_percent")
+    private Integer refundPercent;
+
+    @Column(name="refunded_amount_minor")
+    private Long refundedAmountMinor;
+
+    @Column(name="refunded_at")
+    private OffsetDateTime refundedAt;
+
     @Column(name="hold_until", nullable = false)
     private OffsetDateTime holdUntil;
 
@@ -56,9 +65,17 @@ public class EscrowHold {
     public EscrowStatus getStatus() { return status; }
     public void setStatus(EscrowStatus status) { this.status = status; }
 
+    public Integer getRefundPercent() { return refundPercent; }
+    public void setRefundPercent(Integer refundPercent) { this.refundPercent = refundPercent; }
+
+    public Long getRefundedAmountMinor() { return refundedAmountMinor; }
+    public void setRefundedAmountMinor(Long refundedAmountMinor) { this.refundedAmountMinor = refundedAmountMinor; }
+
+    public OffsetDateTime getRefundedAt() { return refundedAt; }
+    public void setRefundedAt(OffsetDateTime refundedAt) { this.refundedAt = refundedAt; }
+
     public OffsetDateTime getHoldUntil() { return holdUntil; }
     public void setHoldUntil(OffsetDateTime holdUntil) { this.holdUntil = holdUntil; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }
-

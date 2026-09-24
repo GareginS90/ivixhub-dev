@@ -25,6 +25,15 @@ const TXT = {
     resendHint: "Проверьте SMS или backend mock log.",
     phoneConflict:
       "Этот номер уже привязан к другому аккаунту. Войдите в существующий аккаунт или используйте восстановление доступа.",
+    phoneFormat:
+      "Введите номер в международном формате, например +374XXXXXXXX.",
+    phoneRequired: "Введите номер телефона, чтобы получить код подтверждения.",
+    invalidCode: "Код указан неверно. Проверьте его и попробуйте снова.",
+    expiredCode: "Срок действия кода истёк. Запросите новый код.",
+    noActiveCode:
+      "Для этого номера пока нет активного кода. Сначала запросите код подтверждения.",
+    noAttemptsLeft:
+      "Лимит попыток исчерпан. Запросите новый код и попробуйте снова.",
     recovery: "Восстановление доступа",
     login: "Войти",
     genericSendError: "Не удалось отправить код. Попробуйте ещё раз.",
@@ -49,6 +58,15 @@ const TXT = {
     resendHint: "Check SMS or backend mock log.",
     phoneConflict:
       "This phone number is already linked to another account. Sign in to the existing account or use account recovery.",
+    phoneFormat:
+      "Enter the phone number in international format, for example +374XXXXXXXX.",
+    phoneRequired: "Enter your phone number to receive a verification code.",
+    invalidCode: "The code is incorrect. Please check it and try again.",
+    expiredCode: "This code has expired. Request a new one and try again.",
+    noActiveCode:
+      "There is no active code for this phone number yet. Request a code first.",
+    noAttemptsLeft:
+      "The attempt limit has been reached. Request a new code and try again.",
     recovery: "Account recovery",
     login: "Sign in",
     genericSendError: "Failed to send the code. Please try again.",
@@ -73,6 +91,16 @@ const TXT = {
     resendHint: "Ստուգեք SMS-ը կամ backend mock log-ը։",
     phoneConflict:
       "Այս համարը արդեն կապված է մեկ այլ հաշվի հետ։ Մուտք գործեք առկա հաշիվ կամ օգտագործեք հասանելիության վերականգնումը։",
+    phoneFormat:
+      "Մուտքագրեք հեռախոսահամարը միջազգային ձևաչափով, օրինակ՝ +374XXXXXXXX։",
+    phoneRequired:
+      "Մուտքագրեք հեռախոսահամարը, որպեսզի ստանաք հաստատման կոդը։",
+    invalidCode: "Կոդը սխալ է։ Ստուգեք այն և փորձեք կրկին։",
+    expiredCode: "Կոդի ժամկետը լրացել է։ Պահանջեք նոր կոդ։",
+    noActiveCode:
+      "Այս համարի համար ակտիվ կոդ դեռ չկա։ Նախ պահանջեք հաստատման կոդը։",
+    noAttemptsLeft:
+      "Փորձերի սահմանաչափը սպառվել է։ Պահանջեք նոր կոդ և փորձեք կրկին։",
     recovery: "Հասանելիության վերականգնում",
     login: "Մուտք",
     genericSendError: "Չհաջողվեց ուղարկել կոդը։ Փորձեք կրկին։",
@@ -92,9 +120,8 @@ function friendlyStartError(payload: any, tr: (typeof TXT)[Lang]) {
   const raw = extractRaw(payload);
 
   if (raw.includes("already linked to another account")) return tr.phoneConflict;
-  if (raw.includes("Phone start failed") && raw.includes("already linked to another account")) return tr.phoneConflict;
-  if (raw.includes("Phone must be in international format")) return raw;
-  if (raw.includes("Phone is required")) return raw;
+  if (raw.includes("Phone must be in international format")) return tr.phoneFormat;
+  if (raw.includes("Phone is required")) return tr.phoneRequired;
 
   return tr.genericSendError;
 }
@@ -103,12 +130,12 @@ function friendlyVerifyError(payload: any, tr: (typeof TXT)[Lang]) {
   const raw = extractRaw(payload);
 
   if (raw.includes("already linked to another account")) return tr.phoneConflict;
-  if (raw.includes("Invalid code")) return raw;
-  if (raw.includes("Code expired")) return raw;
-  if (raw.includes("No active code")) return raw;
-  if (raw.includes("No attempts left")) return raw;
-  if (raw.includes("Phone must be in international format")) return raw;
-  if (raw.includes("Phone is required")) return raw;
+  if (raw.includes("Invalid code")) return tr.invalidCode;
+  if (raw.includes("Code expired")) return tr.expiredCode;
+  if (raw.includes("No active code")) return tr.noActiveCode;
+  if (raw.includes("No attempts left")) return tr.noAttemptsLeft;
+  if (raw.includes("Phone must be in international format")) return tr.phoneFormat;
+  if (raw.includes("Phone is required")) return tr.phoneRequired;
 
   return tr.genericVerifyError;
 }
@@ -154,7 +181,10 @@ export default function VerifyPage() {
   const [showRecovery, setShowRecovery] = useState(false);
 
   async function sendCode() {
-    if (!phone) return;
+    if (!phone) {
+      setError(tr.phoneRequired);
+      return;
+    }
 
     setSending(true);
     setError(null);
@@ -188,7 +218,15 @@ export default function VerifyPage() {
   }
 
   async function verify() {
-    if (!phone || !code) return;
+    if (!phone) {
+      setError(tr.phoneRequired);
+      return;
+    }
+
+    if (!code) {
+      setError(tr.invalidCode);
+      return;
+    }
 
     setVerifying(true);
     setError(null);
@@ -250,7 +288,7 @@ export default function VerifyPage() {
           <button
             onClick={sendCode}
             disabled={sending}
-            className="w-full rounded-2xl border px-4 py-3 hover:bg-gray-50"
+            className="w-full rounded-2xl border px-4 py-3 hover:bg-gray-50 disabled:opacity-50"
           >
             {sending ? tr.sending : tr.send}
           </button>
@@ -281,7 +319,7 @@ export default function VerifyPage() {
           )}
 
           {showRecovery && (
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/auth/login"
                 className="inline-flex justify-center rounded-2xl border px-4 py-3 hover:bg-gray-50"
@@ -306,7 +344,7 @@ export default function VerifyPage() {
           <button
             onClick={verify}
             disabled={verifying}
-            className="w-full rounded-2xl bg-black text-white py-3 disabled:opacity-50"
+            className="w-full rounded-2xl bg-black py-3 text-white disabled:opacity-50"
           >
             {verifying ? tr.verifying : tr.verify}
           </button>

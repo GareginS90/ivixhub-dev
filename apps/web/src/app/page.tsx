@@ -1,279 +1,525 @@
-export const dynamic = "force-dynamic";
+"use client";
+
 import Link from "next/link";
-import { cookies } from "next/headers";
-import en from "@/i18n/en.json";
-import ru from "@/i18n/ru.json";
-import hy from "@/i18n/hy.json";
-import { PublicHeader } from "@/components/PublicHeader";
+import { useEffect, useState } from "react";
 
-type Lang = "en" | "ru" | "hy";
-function t(lang: Lang) {
-  return lang === "ru" ? ru : lang === "hy" ? hy : en;
-}
+import { BrandLogo } from "@/components/BrandLogo";
+import { getUiLangFromCookie } from "@/i18n/client";
 
-function Badge({ children }: { children: React.ReactNode }) {
+type Lang = "hy" | "ru" | "en";
+
+const CONTENT = {
+  hy: {
+    eyebrow: "Առցանց հոգեբանական աջակցություն",
+    titleStart: "Քո հոգեբանական",
+    titleAccent: "աջակցությունը՝",
+    titleEnd: "մեկ ապահով տարածքում",
+    description:
+      "Գտիր քեզ համապատասխան ստուգված մասնագետին, ընտրիր հարմար ժամ և ստացիր մասնագիտական աջակցություն առցանց՝ պարզ ու վստահելի ձևով։",
+
+    findPsychologist: "Գտնել հոգեբան",
+    takeQuiz: "Անցնել կարճ թեստը",
+
+    confidential: "Գաղտնի",
+    professional: "Ստուգված մասնագետներ",
+    flexible: "Հարմար ժամանակ",
+
+    startTitle: "Սկսելը պարզ է",
+    startDescription:
+      "Մի քանի քայլ, և կարող ես ընտրել քեզ համապատասխան մասնագետին։",
+
+    step1: "Պատմիր՝ ինչ աջակցություն ես փնտրում",
+    step1Text:
+      "Կարճ թեստը կօգնի հասկանալ համապատասխան ուղղությունն ու մասնագիտացումը։",
+
+    step2: "Ընտրիր մասնագետին",
+    step2Text:
+      "Դիտիր ստուգված հոգեբանների պրոֆիլները, լեզուները, մեթոդներն ու հասանելի ժամերը։",
+
+    step3: "Ամրագրիր հանդիպումը",
+    step3Text:
+      "Ընտրիր հարմար ժամը և շարունակիր ամբողջ գործընթացը IviXHub-ի անվտանգ միջավայրում։",
+
+    quizEyebrow: "Չգիտե՞ս՝ ում ընտրել",
+    quizTitle: "Սկսիր կարճ ընտրության թեստից",
+    quizDescription:
+      "Մի քանի պարզ հարցերի միջոցով կօգնենք նեղացնել ընտրությունը և գտնել քո կարիքներին համապատասխան մասնագետների։",
+    quizAction: "Սկսել թեստը",
+
+    specialistsEyebrow: "Մասնագետներ",
+    specialistsTitle: "Գտիր այն հոգեբանին, ում հետ քեզ հարմար կլինի խոսել",
+    specialistsDescription:
+      "Փնտրիր ըստ լեզվի, մասնագիտացման և աշխատանքի մեթոդի։ Յուրաքանչյուր մասնագետ անցնում է հարթակի ստուգման գործընթացը։",
+    specialistsAction: "Բացել հոգեբանների կատալոգը",
+
+    psychologistEyebrow: "Հոգեբանների համար",
+    psychologistTitle: "Միացիր IviXHub մասնագիտական համայնքին",
+    psychologistDescription:
+      "Ստեղծիր մասնագիտական պրոֆիլ, անցիր ստուգումը և կառավարիր հասանելիությունն ու հանդիպումները մեկ աշխատանքային միջավայրում։",
+    psychologistAction: "Դառնալ IviXHub-ի հոգեբան",
+
+    finalTitle: "Առաջին քայլը կարող է շատ պարզ լինել",
+    finalDescription:
+      "Ընտրիր մասնագետ կամ սկսիր կարճ թեստից։ Մնացած ճանապարհը IviXHub-ը կդարձնի պարզ և հասկանալի։",
+    finalPrimary: "Գտնել հոգեբան",
+    finalSecondary: "Անցնել թեստը"
+  },
+
+  ru: {
+    eyebrow: "Онлайн-психологическая поддержка",
+    titleStart: "Психологическая",
+    titleAccent: "поддержка",
+    titleEnd: "в одном безопасном пространстве",
+    description:
+      "Найдите подходящего проверенного специалиста, выберите удобное время и получите профессиональную поддержку онлайн — просто и спокойно.",
+
+    findPsychologist: "Найти психолога",
+    takeQuiz: "Пройти короткий тест",
+
+    confidential: "Конфиденциально",
+    professional: "Проверенные специалисты",
+    flexible: "Удобное время",
+
+    startTitle: "Начать просто",
+    startDescription:
+      "Несколько понятных шагов — и вы сможете выбрать подходящего специалиста.",
+
+    step1: "Расскажите, какая поддержка вам нужна",
+    step1Text:
+      "Короткий тест поможет определить подходящее направление и специализацию.",
+
+    step2: "Выберите специалиста",
+    step2Text:
+      "Сравните профили, языки, методы работы и доступное время проверенных психологов.",
+
+    step3: "Забронируйте встречу",
+    step3Text:
+      "Выберите удобное время и продолжите весь процесс в безопасной среде IviXHub.",
+
+    quizEyebrow: "Не знаете, кого выбрать?",
+    quizTitle: "Начните с короткого теста",
+    quizDescription:
+      "Несколько простых вопросов помогут сузить выбор и найти специалистов, подходящих под ваш запрос.",
+    quizAction: "Начать тест",
+
+    specialistsEyebrow: "Специалисты",
+    specialistsTitle: "Найдите психолога, с которым вам будет комфортно",
+    specialistsDescription:
+      "Ищите по языку, специализации и методу работы. Каждый специалист проходит процесс проверки платформы.",
+    specialistsAction: "Открыть каталог психологов",
+
+    psychologistEyebrow: "Для психологов",
+    psychologistTitle: "Присоединяйтесь к профессиональному сообществу IviXHub",
+    psychologistDescription:
+      "Создайте профессиональный профиль, пройдите проверку и управляйте доступностью и встречами в одном рабочем пространстве.",
+    psychologistAction: "Стать психологом IviXHub",
+
+    finalTitle: "Первый шаг может быть очень простым",
+    finalDescription:
+      "Выберите специалиста или начните с короткого теста. IviXHub поможет сделать дальнейший путь понятным.",
+    finalPrimary: "Найти психолога",
+    finalSecondary: "Пройти тест"
+  },
+
+  en: {
+    eyebrow: "Online psychological support",
+    titleStart: "Psychological",
+    titleAccent: "support",
+    titleEnd: "in one safe space",
+    description:
+      "Find a verified specialist who fits your needs, choose a convenient time, and access professional support online in a simple and trusted way.",
+
+    findPsychologist: "Find a psychologist",
+    takeQuiz: "Take the short quiz",
+
+    confidential: "Confidential",
+    professional: "Verified specialists",
+    flexible: "Flexible scheduling",
+
+    startTitle: "Getting started is simple",
+    startDescription:
+      "A few clear steps are all it takes to find the right specialist.",
+
+    step1: "Tell us what support you need",
+    step1Text:
+      "A short quiz can help identify a relevant direction and specialization.",
+
+    step2: "Choose your specialist",
+    step2Text:
+      "Explore verified profiles, languages, therapy methods, and available times.",
+
+    step3: "Book your session",
+    step3Text:
+      "Choose a convenient time and continue the process inside IviXHub's secure environment.",
+
+    quizEyebrow: "Not sure who to choose?",
+    quizTitle: "Start with a short matching quiz",
+    quizDescription:
+      "A few simple questions can narrow the search and help you discover specialists aligned with your needs.",
+    quizAction: "Start the quiz",
+
+    specialistsEyebrow: "Specialists",
+    specialistsTitle: "Find a psychologist you feel comfortable talking to",
+    specialistsDescription:
+      "Search by language, specialization, and therapy method. Every specialist goes through the platform's verification process.",
+    specialistsAction: "Browse psychologists",
+
+    psychologistEyebrow: "For psychologists",
+    psychologistTitle: "Join the IviXHub professional community",
+    psychologistDescription:
+      "Create your professional profile, complete verification, and manage availability and sessions from one workspace.",
+    psychologistAction: "Join IviXHub as a psychologist",
+
+    finalTitle: "The first step can be simple",
+    finalDescription:
+      "Choose a specialist or begin with the short quiz. IviXHub will keep the rest of the journey clear.",
+    finalPrimary: "Find a psychologist",
+    finalSecondary: "Take the quiz"
+  }
+} as const;
+
+function ArrowIcon() {
   return (
-    <span className="inline-flex items-center rounded-full border bg-white/70 px-3 py-1 text-xs text-gray-700 backdrop-blur">
-      {children}
-    </span>
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
   );
 }
 
-function Card({
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 12 4 4L19 6" />
+    </svg>
+  );
+}
+
+function StepCard({
+  number,
   title,
-  desc,
-  tag,
+  text
 }: {
+  number: string;
   title: string;
-  desc: string;
-  tag?: string;
+  text: string;
 }) {
   return (
-    <div className="rounded-3xl border bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="font-semibold">{title}</div>
-          <div className="mt-1 text-sm text-gray-600">{desc}</div>
-        </div>
-        {tag && (
-          <span className="shrink-0 rounded-full bg-black text-white px-3 py-1 text-xs">
-            {tag}
-          </span>
-        )}
+    <article className="group rounded-[1.8rem] border border-[#073f43]/10 bg-white p-6 shadow-[0_14px_45px_rgba(7,63,67,0.06)] transition duration-300 hover:-translate-y-1 hover:border-[#12b8c4]/30 hover:bg-gradient-to-br hover:from-white hover:via-[#f3fcfb] hover:to-[#f2f4ff] hover:shadow-[0_22px_60px_rgba(57,119,232,0.12)] sm:p-7">
+      <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#e4f8f5] via-[#eaf8fb] to-[#efecff] text-sm font-black text-[#087f78] transition duration-300 group-hover:scale-105">
+        {number}
       </div>
-    </div>
+
+      <h3 className="mt-6 text-xl font-extrabold tracking-[-0.025em] text-[#073f43]">
+        {title}
+      </h3>
+
+      <p className="mt-3 text-[15px] leading-7 text-[#607172]">
+        {text}
+      </p>
+    </article>
   );
 }
 
-function FeaturedCard({ name, meta }: { name: string; meta: string }) {
-  return (
-    <div className="rounded-3xl border bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-b from-slate-100 to-white border grid place-items-center font-semibold">
-          PSY
-        </div>
-        <div className="min-w-0">
-          <div className="font-semibold truncate">{name}</div>
-          <div className="text-xs text-gray-600 truncate">{meta}</div>
-        </div>
-        <span className="ml-auto rounded-full bg-amber-100 text-amber-900 px-3 py-1 text-xs border border-amber-200">
-          ⭐ Featured
-        </span>
-      </div>
+export default function HomePage() {
+  const [lang, setLang] = useState<Lang>("hy");
 
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <span className="text-gray-600">Rating</span>
-        <span className="font-medium">4.9 • 120 reviews</span>
-      </div>
+  useEffect(() => {
+    const syncLang = () => setLang(getUiLangFromCookie());
 
-      <Link
-        href="/psychologists"
-        className="mt-4 inline-flex w-full justify-center rounded-2xl bg-black text-white py-2 hover:opacity-90"
-      >
-        View profile
-      </Link>
-    </div>
-  );
-}
+    syncLang();
 
-export default async function HomePage() {
-  const lang = ((await cookies()).get("ivixhub_lang")?.value as Lang) || "ru";
-  const tr = t(lang);
+    window.addEventListener("focus", syncLang);
+
+    return () => {
+      window.removeEventListener("focus", syncLang);
+    };
+  }, []);
+
+  const t = CONTENT[lang];
 
   return (
-    <div className="min-h-screen bg-[#fbfcff]">
-      <PublicHeader />
+    <main>
+      <section className="relative isolate overflow-hidden bg-[#fbfefd]">
+        <div className="absolute inset-0 -z-30 bg-[radial-gradient(circle_at_10%_20%,rgba(18,184,196,0.10),transparent_28%),radial-gradient(circle_at_90%_64%,rgba(118,87,223,0.09),transparent_30%)]" />
 
-      {/* Hero */}
-      <main className="mx-auto max-w-6xl px-4 py-10">
-        <div className="relative overflow-hidden rounded-[2.25rem] border bg-gradient-to-b from-slate-50 to-white p-8 md:p-12 shadow-sm">
-          {/* soft blobs */}
-          <div className="pointer-events-none absolute -top-24 -left-28 h-72 w-72 rounded-full bg-sky-200/45 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 -right-28 h-72 w-72 rounded-full bg-indigo-200/45 blur-3xl" />
-          <div className="pointer-events-none absolute top-10 right-20 h-40 w-40 rounded-full bg-amber-200/30 blur-3xl" />
-
-          <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <div className="flex flex-wrap gap-2">
-                <Badge>🇦🇲 Armenia</Badge>
-                <Badge>🌍 Diaspora-friendly</Badge>
-                <Badge>🔒 Confidential</Badge>
-              </div>
-
-              <h1 className="mt-5 text-3xl md:text-5xl font-semibold tracking-tight">
-                {tr.hero_title}
-              </h1>
-              <p className="mt-4 text-base md:text-lg text-gray-600 max-w-xl">
-                {tr.hero_subtitle}
-              </p>
-
-              <div className="mt-7 flex flex-col sm:flex-row gap-3">
-                <Link
-                  href="/quiz"
-                  className="inline-flex justify-center rounded-2xl bg-black text-white px-6 py-3 hover:opacity-90"
-                >
-                  {tr.cta_quiz}
-                </Link>
-                <Link
-                  href="/psychologists"
-                  className="inline-flex justify-center rounded-2xl border bg-white px-6 py-3 hover:bg-gray-50"
-                >
-                  {tr.cta_catalog}
-                </Link>
-              </div>
-
-              <div className="mt-7 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="rounded-2xl border bg-white/80 p-3">
-                  <div className="text-xs text-gray-500">Avg match time</div>
-                  <div className="mt-1 font-semibold">~1 min</div>
-                </div>
-                <div className="rounded-2xl border bg-white/80 p-3">
-                  <div className="text-xs text-gray-500">Formats</div>
-                  <div className="mt-1 font-semibold">Video / Chat</div>
-                </div>
-                <div className="rounded-2xl border bg-white/80 p-3">
-                  <div className="text-xs text-gray-500">Languages</div>
-                  <div className="mt-1 font-semibold">HY / RU / EN</div>
-                </div>
-                <div className="rounded-2xl border bg-white/80 p-3">
-                  <div className="text-xs text-gray-500">Payments</div>
-                  <div className="mt-1 font-semibold">Card / IDram / TelCell</div>
-                </div>
-              </div>
+        <div className="mx-auto grid min-h-[650px] max-w-7xl items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:px-10 lg:py-24">
+          <div className="max-w-[680px]">
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-[#12b8c4]/20 bg-white/85 px-4 py-2 text-xs font-extrabold tracking-[0.08em] text-[#087f78] shadow-[0_8px_28px_rgba(7,63,67,0.06)] backdrop-blur sm:text-sm">
+              <span className="size-2 rounded-full bg-[#12b8c4] shadow-[0_0_0_5px_rgba(18,184,196,0.10)]" />
+              {t.eyebrow}
             </div>
 
-            {/* Illustration (inline SVG, calm) */}
-            <div className="relative">
-              <div className="rounded-[2rem] border bg-white/70 p-6 shadow-sm">
-                <div className="text-sm font-semibold">Your path</div>
-                <div className="mt-4 space-y-3">
-                  <div className="rounded-2xl border bg-white p-4">
-                    <div className="text-xs text-gray-500">Step 1</div>
-                    <div className="font-medium">Quick quiz</div>
-                  </div>
-                  <div className="rounded-2xl border bg-white p-4">
-                    <div className="text-xs text-gray-500">Step 2</div>
-                    <div className="font-medium">Recommended specialization</div>
-                  </div>
-                  <div className="rounded-2xl border bg-white p-4">
-                    <div className="text-xs text-gray-500">Step 3</div>
-                    <div className="font-medium">Book safely (escrow)</div>
-                  </div>
+            <h1 className="mt-7 max-w-[650px] text-balance text-[2.55rem] font-black leading-[1.08] tracking-[-0.045em] text-[#073f43] sm:text-[3.25rem] lg:text-[3.65rem]">
+              {t.titleStart}{" "}
+              <span className="ivix-gradient-text">
+                {t.titleAccent}
+              </span>{" "}
+              {t.titleEnd}
+            </h1>
+
+            <p className="mt-6 max-w-[610px] text-pretty text-lg leading-8 text-[#607172]">
+              {t.description}
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/psychologists"
+                className="group inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#075f62] via-[#078b7b] to-[#12aeba] px-6 py-3.5 font-bold text-white shadow-[0_14px_35px_rgba(7,139,123,0.20)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(18,184,196,0.28)]"
+              >
+                {t.findPsychologist}
+                <span className="transition-transform duration-300 group-hover:translate-x-1">
+                  <ArrowIcon />
+                </span>
+              </Link>
+
+              <Link
+                href="/quiz"
+                className="group inline-flex min-h-13 items-center justify-center gap-2 rounded-full border border-[#3977e8]/18 bg-white px-6 py-3.5 font-bold text-[#315fbd] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#7657df]/28 hover:bg-gradient-to-r hover:from-[#f0fbfb] hover:to-[#f3efff] hover:text-[#6049c7] hover:shadow-[0_16px_36px_rgba(89,92,210,0.13)]"
+              >
+                {t.takeQuiz}
+                <span className="transition-transform duration-300 group-hover:translate-x-1">
+                  <ArrowIcon />
+                </span>
+              </Link>
+            </div>
+
+            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3">
+              {[t.confidential, t.professional, t.flexible].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-2 text-sm font-semibold text-[#526d6f]"
+                >
+                  <span className="flex size-6 items-center justify-center rounded-full bg-[#e7f8f5] text-[#078b7b]">
+                    <CheckIcon />
+                  </span>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-[540px] lg:justify-self-end">
+            <div className="absolute -inset-8 -z-20 rounded-[3rem] bg-gradient-to-br from-[#12b8c4]/18 via-[#3977e8]/8 to-[#7657df]/18 blur-3xl" />
+
+            <div className="group relative rounded-[2.2rem] border border-[#073f43]/9 bg-white/85 p-4 shadow-[0_28px_80px_rgba(7,63,67,0.13)] backdrop-blur-xl transition duration-500 hover:-translate-y-1.5 hover:border-[#3977e8]/20 hover:shadow-[0_34px_90px_rgba(57,119,232,0.17)] sm:p-5">
+              <div className="relative overflow-hidden rounded-[1.7rem] bg-white px-5 py-9 sm:px-8 sm:py-11">
+                <div className="transition duration-500 group-hover:scale-[1.02]">
+                  <BrandLogo size="lg" />
                 </div>
 
-                <div className="mt-6 rounded-2xl bg-gradient-to-b from-slate-50 to-white border p-4">
-                  <div className="text-xs text-gray-500">Preview</div>
-                  <div className="mt-2 text-sm">
-                    “Based on your answers, we recommend: <b>Anxiety specialist</b>”
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <span className="rounded-full border px-3 py-1 text-xs bg-white">Language: RU</span>
-                    <span className="rounded-full border px-3 py-1 text-xs bg-white">Format: Video</span>
-                  </div>
+                <div className="mx-auto mt-7 h-1 w-28 rounded-full bg-gradient-to-r from-[#078b7b] via-[#12b8c4] to-[#7657df]" />
+
+                <p className="mx-auto mt-6 max-w-sm text-center text-sm font-bold tracking-[0.18em] text-[#607172]">
+                  ONLINE PSYCHOLOGICAL SUPPORT
+                </p>
+
+                <div className="mt-8 grid grid-cols-2 gap-3">
+                  {[t.confidential, t.professional, t.flexible, "IviXHub"].map(
+                    (item) => (
+                      <div
+                        key={item}
+                        className="rounded-2xl border border-[#073f43]/8 bg-[#f8fbfb] px-4 py-3 text-center text-xs font-bold text-[#526d6f] transition duration-300 group-hover:border-[#12b8c4]/14 group-hover:bg-[#f4fbfb]"
+                      >
+                        {item}
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
-
-              <svg
-                className="pointer-events-none absolute -bottom-8 -right-8 opacity-70"
-                width="220"
-                height="220"
-                viewBox="0 0 220 220"
-                fill="none"
-              >
-                <circle cx="110" cy="110" r="90" stroke="#e5e7eb" strokeWidth="2" />
-                <circle cx="110" cy="110" r="60" stroke="#e5e7eb" strokeWidth="2" />
-                <circle cx="110" cy="110" r="30" stroke="#e5e7eb" strokeWidth="2" />
-              </svg>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Trust block */}
-        <section className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card title={tr.trust_1} desc="Onboarding + moderation (documents & checks)." />
-          <Card title={tr.trust_2} desc="Private sessions, safe storage practices." />
-          <Card title={tr.trust_3} desc="Multiple methods with feature flags." />
-          <Card title={tr.trust_4} desc="Hold funds until session is completed." />
-        </section>
+      <section className="bg-white py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-balance text-3xl font-black tracking-[-0.035em] text-[#073f43] sm:text-4xl">
+              {t.startTitle}
+            </h2>
 
-        {/* Featured + Ad slots */}
-        <section className="mt-12">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold">Featured on IviXHub</h2>
-              <p className="mt-1 text-sm text-gray-600">
-                Платные места (прозрачно помечены). В MVP+ подключим из backend и добавим правила отбора.
-              </p>
-            </div>
-            <Link href="/psychologists" className="hidden sm:inline-flex rounded-xl border px-4 py-2 hover:bg-gray-50">
-              View all
+            <p className="mt-4 text-lg leading-8 text-[#607172]">
+              {t.startDescription}
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            <StepCard
+              number="01"
+              title={t.step1}
+              text={t.step1Text}
+            />
+            <StepCard
+              number="02"
+              title={t.step2}
+              text={t.step2Text}
+            />
+            <StepCard
+              number="03"
+              title={t.step3}
+              text={t.step3Text}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-[#f5fbfa] py-20 sm:py-24">
+        <div className="absolute -left-32 top-0 size-80 rounded-full bg-[#12b8c4]/8 blur-3xl" />
+
+        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-10">
+          <div>
+            <p className="text-sm font-extrabold tracking-[0.15em] text-[#078b7b]">
+              {t.quizEyebrow}
+            </p>
+
+            <h2 className="mt-4 text-balance text-3xl font-black tracking-[-0.035em] text-[#073f43] sm:text-4xl">
+              {t.quizTitle}
+            </h2>
+
+            <p className="mt-5 max-w-xl text-lg leading-8 text-[#607172]">
+              {t.quizDescription}
+            </p>
+
+            <Link
+              href="/quiz"
+              className="group mt-7 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 py-3 font-bold text-[#087f78] shadow-[0_12px_32px_rgba(7,63,67,0.08)] ring-1 ring-[#078b7b]/15 transition duration-300 hover:-translate-y-1 hover:bg-gradient-to-r hover:from-[#eefaf8] hover:to-[#f1efff] hover:text-[#5c4cc5] hover:shadow-[0_18px_42px_rgba(57,119,232,0.13)]"
+            >
+              {t.quizAction}
+              <ArrowIcon />
             </Link>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <FeaturedCard name="Featured Psychologist #1" meta="CBT • Anxiety • RU/EN" />
-            <FeaturedCard name="Featured Psychologist #2" meta="Relationships • Family • HY/RU" />
-            <FeaturedCard name="Featured Psychologist #3" meta="Stress • Burnout • EN" />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="group rounded-[2rem] border border-[#073f43]/9 bg-white p-7 shadow-[0_16px_48px_rgba(7,63,67,0.07)] transition duration-300 hover:-translate-y-1 hover:border-[#12b8c4]/25 hover:shadow-[0_22px_55px_rgba(18,184,196,0.12)]">
+              <div className="text-4xl font-black ivix-gradient-text">
+                01
+              </div>
+              <p className="mt-5 font-bold leading-7 text-[#073f43]">
+                {t.step1}
+              </p>
+            </div>
 
-          <div className="mt-6 rounded-3xl border bg-white p-5 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
-                <div className="font-semibold">Ad / Partner space</div>
-                <div className="text-sm text-gray-600 mt-1">
-                  Рекламный блок (в MVP+ — строго с правилами: без токсичных тем, только уместные партнёры).
-                </div>
+            <div className="group rounded-[2rem] border border-[#073f43]/9 bg-white p-7 shadow-[0_16px_48px_rgba(7,63,67,0.07)] transition duration-300 hover:-translate-y-1 hover:border-[#7657df]/22 hover:shadow-[0_22px_55px_rgba(118,87,223,0.11)] sm:translate-y-6 sm:hover:translate-y-5">
+              <div className="text-4xl font-black ivix-gradient-text">
+                02
               </div>
-              <div className="flex gap-2">
-                <Link href="/support" className="rounded-xl border px-4 py-2 hover:bg-gray-50">Policy</Link>
-                <Link href="/support" className="rounded-xl bg-black text-white px-4 py-2 hover:opacity-90">Become a partner</Link>
-              </div>
+              <p className="mt-5 font-bold leading-7 text-[#073f43]">
+                {t.step2}
+              </p>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Quiz teaser */}
-        <section className="mt-12">
-          <div className="rounded-[2rem] border bg-gradient-to-b from-white to-slate-50 p-8 shadow-sm">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-              <div className="lg:col-span-2">
-                <h2 className="text-2xl font-semibold">Не знаешь с чего начать?</h2>
-                <p className="mt-2 text-gray-600">
-                  Пройди мини-тест (5 вопросов). Мы предложим нужную специализацию и подберём психологов по языку сессии.
-                </p>
-                <div className="mt-5 flex flex-col sm:flex-row gap-3">
-                  <Link href="/quiz" className="inline-flex justify-center rounded-2xl bg-black text-white px-6 py-3 hover:opacity-90">
-                    Start quiz
-                  </Link>
-                  <Link href="/psychologists" className="inline-flex justify-center rounded-2xl border bg-white px-6 py-3 hover:bg-gray-50">
-                    Browse specialists
-                  </Link>
-                </div>
-              </div>
-              <div className="rounded-3xl border bg-white p-5">
-                <div className="text-sm font-semibold">Quiz preview</div>
-                <div className="mt-3 space-y-2 text-sm">
-                  <div className="rounded-2xl border px-3 py-2">Language: HY / RU / EN</div>
-                  <div className="rounded-2xl border px-3 py-2">Problem: anxiety / stress / relationships</div>
-                  <div className="rounded-2xl border px-3 py-2">Format: video / chat</div>
-                </div>
-              </div>
+      <section className="bg-white py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <article className="group flex flex-col rounded-[2rem] border border-[#073f43]/10 bg-[#fbfefd] p-7 shadow-[0_16px_50px_rgba(7,63,67,0.06)] transition duration-300 hover:-translate-y-1 hover:border-[#12b8c4]/28 hover:bg-gradient-to-br hover:from-[#f8fefd] hover:to-[#eef8ff] hover:shadow-[0_24px_65px_rgba(57,119,232,0.12)] sm:p-9">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#078b7b]">
+                {t.specialistsEyebrow}
+              </p>
+
+              <h2 className="mt-4 text-2xl font-black tracking-[-0.03em] text-[#073f43] sm:text-3xl">
+                {t.specialistsTitle}
+              </h2>
+
+              <p className="mt-4 text-base leading-7 text-[#607172]">
+                {t.specialistsDescription}
+              </p>
+
+              <Link
+                href="/psychologists"
+                className="group/link mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-[#078b7b]/18 bg-white px-5 py-3 text-sm font-bold text-[#078b7b] shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-[#12b8c4]/35 hover:bg-[#edf9f8]"
+              >
+                {t.specialistsAction}
+                <span className="transition-transform group-hover/link:translate-x-1">
+                  <ArrowIcon />
+                </span>
+              </Link>
+            </article>
+
+            <article className="group flex flex-col rounded-[2rem] border border-[#073f43]/10 bg-[#fbfefd] p-7 shadow-[0_16px_50px_rgba(7,63,67,0.06)] transition duration-300 hover:-translate-y-1 hover:border-[#7657df]/24 hover:bg-gradient-to-br hover:from-[#f9fdfd] hover:to-[#f4f0ff] hover:shadow-[0_24px_65px_rgba(118,87,223,0.11)] sm:p-9">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#6655cc]">
+                {t.psychologistEyebrow}
+              </p>
+
+              <h2 className="mt-4 text-2xl font-black tracking-[-0.03em] text-[#073f43] sm:text-3xl">
+                {t.psychologistTitle}
+              </h2>
+
+              <p className="mt-4 text-base leading-7 text-[#607172]">
+                {t.psychologistDescription}
+              </p>
+
+              <Link
+                href="/auth/register?role=psychologist"
+                className="group/link mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-[#7657df]/18 bg-white px-5 py-3 text-sm font-bold text-[#6655cc] shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-[#7657df]/35 hover:bg-[#f4f0ff]"
+              >
+                {t.psychologistAction}
+                <span className="transition-transform group-hover/link:translate-x-1">
+                  <ArrowIcon />
+                </span>
+              </Link>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-5 pb-20 sm:px-8 sm:pb-24 lg:px-10">
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.2rem] bg-gradient-to-r from-[#075f62] via-[#087f78] to-[#4f63cc] px-6 py-12 text-white shadow-[0_24px_70px_rgba(7,95,98,0.22)] sm:px-10 lg:px-14">
+          <div className="absolute -right-16 -top-28 size-72 rounded-full border border-white/10" />
+          <div className="absolute -right-4 -top-16 size-48 rounded-full border border-white/10" />
+
+          <div className="relative flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-black tracking-[-0.035em] sm:text-4xl">
+                {t.finalTitle}
+              </h2>
+
+              <p className="mt-4 text-base leading-7 text-white/75 sm:text-lg">
+                {t.finalDescription}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 flex-wrap gap-3">
+              <Link
+                href="/psychologists"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-6 py-3 font-bold text-[#075f62] shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#eafaf8] hover:shadow-xl"
+              >
+                {t.finalPrimary}
+              </Link>
+
+              <Link
+                href="/quiz"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 py-3 font-bold text-white backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-white/40 hover:bg-white/18"
+              >
+                {t.finalSecondary}
+              </Link>
             </div>
           </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="mt-14 pb-10 text-sm text-gray-600">
-          <div className="border-t pt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>© {new Date().getFullYear()} IviXHub</div>
-            <div className="flex gap-4">
-              <Link href="/legal/terms" className="hover:text-black">Terms</Link>
-              <Link href="/legal/privacy" className="hover:text-black">Privacy</Link>
-              <Link href="/support" className="hover:text-black">Support</Link>
-            </div>
-          </div>
-        </footer>
-      </main>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }

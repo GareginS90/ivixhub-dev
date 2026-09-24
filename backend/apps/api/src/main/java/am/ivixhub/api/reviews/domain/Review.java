@@ -43,6 +43,15 @@ public class Review {
     @Column(name = "comment", length = 2000)
     private String comment;
 
+    @Column(name = "reply_comment", length = 2000)
+    private String replyComment;
+
+    @Column(name = "reply_author_user_id")
+    private Long replyAuthorUserId;
+
+    @Column(name = "replied_at")
+    private OffsetDateTime repliedAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -104,6 +113,30 @@ public class Review {
 
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    public String getReplyComment() {
+        return replyComment;
+    }
+
+    public void setReplyComment(String replyComment) {
+        this.replyComment = replyComment;
+    }
+
+    public Long getReplyAuthorUserId() {
+        return replyAuthorUserId;
+    }
+
+    public void setReplyAuthorUserId(Long replyAuthorUserId) {
+        this.replyAuthorUserId = replyAuthorUserId;
+    }
+
+    public OffsetDateTime getRepliedAt() {
+        return repliedAt;
+    }
+
+    public void setRepliedAt(OffsetDateTime repliedAt) {
+        this.repliedAt = repliedAt;
     }
 
     public OffsetDateTime getCreatedAt() {

@@ -1,26 +1,137 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fbfc;
+  --foreground: #073f43;
+
+  --brand-deep: #073f43;
+  --brand-teal: #078b7b;
+  --brand-cyan: #12b8c4;
+  --brand-blue: #3977e8;
+  --brand-violet: #7657df;
+
+  --surface: #ffffff;
+  --surface-soft: #f2f9f8;
+  --border: rgba(7, 63, 67, 0.1);
+  --muted: #607172;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  min-height: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
 }
 
 body {
+  min-height: 100vh;
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    Inter,
+    "Noto Sans Armenian",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(18, 184, 196, 0.28);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgba(18, 184, 196, 0.22);
+  color: #073f43;
+}
+
+.site-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: clip;
+  background:
+    radial-gradient(
+      circle at 8% 10%,
+      rgba(18, 184, 196, 0.09),
+      transparent 25rem
+    ),
+    radial-gradient(
+      circle at 92% 16%,
+      rgba(118, 87, 223, 0.08),
+      transparent 28rem
+    ),
+    linear-gradient(180deg, #fbfefd 0%, #f7fbfb 52%, #fbfdfd 100%);
+}
+
+.ivix-surface {
+  border: 1px solid rgba(7, 63, 67, 0.1);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 55px rgba(7, 63, 67, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.ivix-gradient {
+  background:
+    linear-gradient(
+      120deg,
+      #078b7b 0%,
+      #12b8c4 38%,
+      #3977e8 68%,
+      #7657df 100%
+    );
+}
+
+.ivix-gradient-text {
+  background:
+    linear-gradient(
+      110deg,
+      #078b7b 0%,
+      #12aeba 35%,
+      #3977e8 68%,
+      #7657df 100%
+    );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

@@ -3,281 +3,664 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
 import { getUiLangFromCookie } from "@/i18n/client";
 
+type Lang = "hy" | "ru" | "en";
+type AuthRole = "CLIENT" | "PSYCHOLOGIST";
+
+type LoginState = {
+  email: string;
+  password: string;
+  showPassword: boolean;
+  submitting: boolean;
+  error: string | null;
+};
+
+const INITIAL_STATE: LoginState = {
+  email: "",
+  password: "",
+  showPassword: false,
+  submitting: false,
+  error: null
+};
+
 const TXT = {
-  ru: {
-    brand: "IvixHUB",
-    clientHeroTitle: "Вход в аккаунт",
-    psychHeroTitle: "Вход для психолога",
-    clientHeroText:
-      "Войдите в аккаунт, чтобы продолжить бронирование, открыть личный кабинет, посмотреть сессии и управлять оплатами.",
-    psychHeroText:
-      "Войдите как психолог, чтобы продолжить onboarding, управлять профессиональным профилем и перейти к следующим шагам верификации.",
-    clientHero1: "Единый вход для клиента в личный кабинет платформы.",
-    clientHero2: "После входа можно бронировать, оплачивать и управлять своими сессиями.",
-    clientHero3: "Если аккаунта ещё нет, сначала создайте его через регистрацию.",
-    psychHero1: "Это вход для psychologist flow, а не для обычного клиентского пути.",
-    psychHero2: "После входа психолог продолжает onboarding и профессиональный профиль.",
-    psychHero3: "Если аккаунта ещё нет, сначала создайте аккаунт психолога.",
-    clientTitle: "Вход клиента",
-    psychTitle: "Вход психолога",
-    clientSubtitle: "Введите email и пароль, чтобы войти в клиентский аккаунт.",
-    psychSubtitle: "Введите email и пароль, чтобы войти в аккаунт психолога.",
-    email: "Email",
-    password: "Пароль",
-    emailPlaceholder: "you@example.com",
-    passwordPlaceholder: "Введите пароль",
-    submitClient: "Войти",
-    submitPsych: "Войти как психолог",
-    submitting: "Вход...",
-    register: "У меня ещё нет аккаунта",
-    home: "Вернуться на главную",
-    switchPsych: "Я психолог",
-    switchClient: "Я клиент",
-    error: "Ошибка",
-    failed: "Не удалось выполнить вход"
-  },
-  en: {
-    brand: "IvixHUB",
-    clientHeroTitle: "Sign in",
-    psychHeroTitle: "Psychologist sign in",
-    clientHeroText:
-      "Sign in to continue booking, open your dashboard, view sessions, and manage payments.",
-    psychHeroText:
-      "Sign in as a psychologist to continue onboarding, manage your professional profile, and proceed with verification steps.",
-    clientHero1: "Single entry point for the client dashboard.",
-    clientHero2: "After sign in, you can book, pay, and manage your sessions.",
-    clientHero3: "If you do not have an account yet, create one first.",
-    psychHero1: "This sign in is for the psychologist flow, not the regular client path.",
-    psychHero2: "After sign in, the psychologist continues onboarding and profile completion.",
-    psychHero3: "If you do not have an account yet, create a psychologist account first.",
-    clientTitle: "Client sign in",
-    psychTitle: "Psychologist sign in",
-    clientSubtitle: "Enter your email and password to sign in to your client account.",
-    psychSubtitle: "Enter your email and password to sign in to your psychologist account.",
-    email: "Email",
-    password: "Password",
-    emailPlaceholder: "you@example.com",
-    passwordPlaceholder: "Enter password",
-    submitClient: "Sign in",
-    submitPsych: "Sign in as psychologist",
-    submitting: "Signing in...",
-    register: "I do not have an account yet",
-    home: "Back to home",
-    switchPsych: "I am a psychologist",
-    switchClient: "I am a client",
-    error: "Error",
-    failed: "Sign in failed"
-  },
   hy: {
-    brand: "IvixHUB",
-    clientHeroTitle: "Մուտք հաշիվ",
-    psychHeroTitle: "Մուտք հոգեբանի համար",
-    clientHeroText:
-      "Մուտք գործեք, որպեսզի շարունակեք ամրագրումը, բացեք անձնական էջը, տեսնեք սեանսները և կառավարեք վճարումները։",
-    psychHeroText:
-      "Մուտք գործեք որպես հոգեբան՝ onboarding-ը շարունակելու, մասնագիտական պրոֆիլը կառավարելու և վերիֆիկացիայի հաջորդ քայլերին անցնելու համար։",
-    clientHero1: "Միասնական մուտք հաճախորդի անձնական էջի համար։",
-    clientHero2: "Մուտքից հետո կարող եք ամրագրել, վճարել և կառավարել սեանսները։",
-    clientHero3: "Եթե դեռ հաշիվ չունեք, նախ ստեղծեք այն գրանցման միջոցով։",
-    psychHero1: "Սա մուտք է psychologist flow-ի համար, ոչ թե սովորական հաճախորդի ուղու։",
-    psychHero2: "Մուտքից հետո հոգեբանը շարունակում է onboarding-ը և պրոֆիլի լրացումը։",
-    psychHero3: "Եթե դեռ հաշիվ չունեք, նախ ստեղծեք հոգեբանի հաշիվ։",
+    eyebrow: "Բարի վերադարձ IviXHub",
+    pageTitle: "Ընտրիր քո մուտքը",
+    pageText:
+      "Մեկ հարթակ՝ երկու հստակ աշխատանքային միջավայրով։ Մուտք գործիր որպես հոգեբան կամ հաճախորդ։",
+
+    psychologistBadge: "Մասնագետների համար",
+    psychologistTitle: "Հոգեբանի մուտք",
+    psychologistText:
+      "Կառավարիր մասնագիտական պրոֆիլը, հասանելի ժամերը և հանդիպումները մեկ անվտանգ միջավայրում։",
+    psychologistPoint1: "Մասնագիտական պրոֆիլ և վերիֆիկացիա",
+    psychologistPoint2: "Հասանելիություն և հանդիպումներ",
+    psychologistSubmit: "Մուտք որպես հոգեբան",
+    psychologistRegister: "Ստեղծել հոգեբանի հաշիվ",
+
+    clientBadge: "Հաճախորդների համար",
     clientTitle: "Հաճախորդի մուտք",
-    psychTitle: "Հոգեբանի մուտք",
-    clientSubtitle: "Մուտքագրեք email-ը և գաղտնաբառը հաճախորդի հաշիվ մուտք գործելու համար։",
-    psychSubtitle: "Մուտքագրեք email-ը և գաղտնաբառը հոգեբանի հաշիվ մուտք գործելու համար։",
+    clientText:
+      "Շարունակիր մասնագետի ընտրությունը, ամրագրումները և քո անձնական ճանապարհը IviXHub-ում։",
+    clientPoint1: "Ամրագրումներ և առաջիկա հանդիպումներ",
+    clientPoint2: "Անձնական ու գաղտնի միջավայր",
+    clientSubmit: "Մուտք",
+    clientRegister: "Ստեղծել հաշիվ",
+
     email: "Email",
     password: "Գաղտնաբառ",
     emailPlaceholder: "you@example.com",
     passwordPlaceholder: "Մուտքագրեք գաղտնաբառը",
-    submitClient: "Մուտք",
-    submitPsych: "Մուտք որպես հոգեբան",
+    forgot: "Մոռացե՞լ եք գաղտնաբառը",
+    show: "Ցույց տալ",
+    hide: "Թաքցնել",
     submitting: "Մուտք է կատարվում...",
-    register: "Ես դեռ հաշիվ չունեմ",
-    home: "Վերադառնալ գլխավոր էջ",
-    switchPsych: "Ես հոգեբան եմ",
-    switchClient: "Ես հաճախորդ եմ",
+    noAccount: "Դեռ հաշիվ չունե՞ք",
     error: "Սխալ",
-    failed: "Չհաջողվեց մուտք գործել"
+    failed: "Չհաջողվեց մուտք գործել։",
+    invalidCredentials: "Սխալ email կամ գաղտնաբառ։",
+    clientMismatch:
+      "Այս հաշիվը գրանցված է որպես հաճախորդի հաշիվ։ Օգտագործեք հաճախորդի մուտքը։",
+    psychologistMismatch:
+      "Այս հաշիվը գրանցված է որպես հոգեբանի հաշիվ։ Օգտագործեք հոգեբանի մուտքը։"
+  },
+
+  ru: {
+    eyebrow: "С возвращением в IviXHub",
+    pageTitle: "Выберите свой вход",
+    pageText:
+      "Одна платформа с двумя понятными рабочими пространствами. Войдите как психолог или клиент.",
+
+    psychologistBadge: "Для специалистов",
+    psychologistTitle: "Вход психолога",
+    psychologistText:
+      "Управляйте профессиональным профилем, доступным временем и встречами в одной безопасной среде.",
+    psychologistPoint1: "Профессиональный профиль и верификация",
+    psychologistPoint2: "Доступность и встречи",
+    psychologistSubmit: "Войти как психолог",
+    psychologistRegister: "Создать аккаунт психолога",
+
+    clientBadge: "Для клиентов",
+    clientTitle: "Вход клиента",
+    clientText:
+      "Продолжите выбор специалиста, бронирования и свой личный путь внутри IviXHub.",
+    clientPoint1: "Бронирования и предстоящие встречи",
+    clientPoint2: "Личное и конфиденциальное пространство",
+    clientSubmit: "Войти",
+    clientRegister: "Создать аккаунт",
+
+    email: "Email",
+    password: "Пароль",
+    emailPlaceholder: "you@example.com",
+    passwordPlaceholder: "Введите пароль",
+    forgot: "Забыли пароль?",
+    show: "Показать",
+    hide: "Скрыть",
+    submitting: "Вход...",
+    noAccount: "Ещё нет аккаунта?",
+    error: "Ошибка",
+    failed: "Не удалось выполнить вход.",
+    invalidCredentials: "Неверный email или пароль.",
+    clientMismatch:
+      "Этот аккаунт зарегистрирован как клиентский. Используйте вход клиента.",
+    psychologistMismatch:
+      "Этот аккаунт зарегистрирован как аккаунт психолога. Используйте вход психолога."
+  },
+
+  en: {
+    eyebrow: "Welcome back to IviXHub",
+    pageTitle: "Choose your sign in",
+    pageText:
+      "One platform with two clear workspaces. Sign in as a psychologist or a client.",
+
+    psychologistBadge: "For professionals",
+    psychologistTitle: "Psychologist sign in",
+    psychologistText:
+      "Manage your professional profile, availability, and sessions from one secure workspace.",
+    psychologistPoint1: "Professional profile and verification",
+    psychologistPoint2: "Availability and sessions",
+    psychologistSubmit: "Sign in as psychologist",
+    psychologistRegister: "Create psychologist account",
+
+    clientBadge: "For clients",
+    clientTitle: "Client sign in",
+    clientText:
+      "Continue finding your specialist, managing bookings, and using your personal IviXHub space.",
+    clientPoint1: "Bookings and upcoming sessions",
+    clientPoint2: "Private and confidential space",
+    clientSubmit: "Sign in",
+    clientRegister: "Create account",
+
+    email: "Email",
+    password: "Password",
+    emailPlaceholder: "you@example.com",
+    passwordPlaceholder: "Enter password",
+    forgot: "Forgot password?",
+    show: "Show",
+    hide: "Hide",
+    submitting: "Signing in...",
+    noAccount: "Don't have an account yet?",
+    error: "Error",
+    failed: "Sign in failed.",
+    invalidCredentials: "Invalid email or password.",
+    clientMismatch:
+      "This account is registered as a client account. Use client sign in.",
+    psychologistMismatch:
+      "This account is registered as a psychologist account. Use psychologist sign in."
   }
 } as const;
 
-type Lang = keyof typeof TXT;
+function friendlyLoginError(
+  payload: unknown,
+  role: AuthRole,
+  tr: (typeof TXT)[Lang]
+) {
+  if (!payload || typeof payload !== "object") {
+    return tr.failed;
+  }
+
+  const p = payload as Record<string, unknown>;
+
+  const parts = [
+    p.message,
+    p.detail,
+    p.title,
+    p.details,
+    p.error,
+    p.errorCode
+  ].filter((value): value is string => typeof value === "string");
+
+  const raw = parts.join(" ").trim();
+
+  if (raw.includes("Invalid credentials")) {
+    return tr.invalidCredentials;
+  }
+
+  if (
+    raw.includes("registered as client") ||
+    raw.includes("not psychologist")
+  ) {
+    return tr.clientMismatch;
+  }
+
+  if (
+    raw.includes("registered as psychologist") ||
+    raw.includes("not client")
+  ) {
+    return tr.psychologistMismatch;
+  }
+
+  return role === "CLIENT" || role === "PSYCHOLOGIST"
+    ? tr.failed
+    : tr.failed;
+}
+
+function EyeIcon({ hidden }: { hidden: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="19"
+      height="19"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.6" />
+      {hidden && <path d="m4 4 16 16" />}
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 12 4 4L19 6" />
+    </svg>
+  );
+}
+
+type LoginCardProps = {
+  role: AuthRole;
+  state: LoginState;
+  setState: React.Dispatch<React.SetStateAction<LoginState>>;
+  tr: (typeof TXT)[Lang];
+  onSubmit: (
+    event: FormEvent<HTMLFormElement>,
+    role: AuthRole
+  ) => Promise<void>;
+};
+
+function LoginCard({
+  role,
+  state,
+  setState,
+  tr,
+  onSubmit
+}: LoginCardProps) {
+  const psychologist = role === "PSYCHOLOGIST";
+
+  const badge = psychologist
+    ? tr.psychologistBadge
+    : tr.clientBadge;
+
+  const title = psychologist
+    ? tr.psychologistTitle
+    : tr.clientTitle;
+
+  const description = psychologist
+    ? tr.psychologistText
+    : tr.clientText;
+
+  const points = psychologist
+    ? [tr.psychologistPoint1, tr.psychologistPoint2]
+    : [tr.clientPoint1, tr.clientPoint2];
+
+  const submitLabel = psychologist
+    ? tr.psychologistSubmit
+    : tr.clientSubmit;
+
+  const registerLabel = psychologist
+    ? tr.psychologistRegister
+    : tr.clientRegister;
+
+  const registerHref = psychologist
+    ? "/auth/register?role=psychologist"
+    : "/auth/register";
+
+  const recoveryHref = psychologist
+    ? "/auth/recovery?role=psychologist"
+    : "/auth/recovery";
+
+  return (
+    <article
+      className={`group relative flex h-full flex-col overflow-hidden rounded-[2rem] border bg-white/92 p-6 shadow-[0_18px_55px_rgba(7,63,67,0.07)] backdrop-blur transition duration-300 hover:-translate-y-1.5 sm:p-8 ${
+        psychologist
+          ? "border-[#12b8c4]/18 hover:border-[#12b8c4]/38 hover:shadow-[0_26px_70px_rgba(18,184,196,0.15)]"
+          : "border-[#3977e8]/14 hover:border-[#7657df]/30 hover:shadow-[0_26px_70px_rgba(89,92,210,0.14)]"
+      }`}
+    >
+      <div
+        className={`pointer-events-none absolute inset-x-0 top-0 h-1 transition duration-300 ${
+          psychologist
+            ? "bg-gradient-to-r from-[#078b7b] via-[#12b8c4] to-[#3977e8]"
+            : "bg-gradient-to-r from-[#12b8c4] via-[#3977e8] to-[#7657df]"
+        }`}
+      />
+
+      <div
+        className={`pointer-events-none absolute -right-20 -top-20 size-52 rounded-full opacity-0 blur-3xl transition duration-500 group-hover:opacity-100 ${
+          psychologist
+            ? "bg-[#12b8c4]/15"
+            : "bg-[#7657df]/14"
+        }`}
+      />
+
+      <div className="relative">
+        <span
+          className={`inline-flex rounded-full px-3.5 py-2 text-xs font-extrabold tracking-[0.08em] ${
+            psychologist
+              ? "bg-[#e9f9f6] text-[#078b7b]"
+              : "bg-[#f0f3ff] text-[#5367ca]"
+          }`}
+        >
+          {badge}
+        </span>
+
+        <h2 className="mt-5 text-2xl font-black tracking-[-0.035em] text-[#073f43] sm:text-[1.8rem]">
+          {title}
+        </h2>
+
+        <p className="mt-3 min-h-[56px] text-[15px] leading-7 text-[#607172]">
+          {description}
+        </p>
+
+        <div className="mt-5 space-y-2.5">
+          {points.map((point) => (
+            <div
+              key={point}
+              className="flex items-start gap-2.5 text-sm font-semibold leading-6 text-[#526d6f]"
+            >
+              <span
+                className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${
+                  psychologist
+                    ? "bg-[#e7f8f5] text-[#078b7b]"
+                    : "bg-[#eef1ff] text-[#5867c9]"
+                }`}
+              >
+                <CheckIcon />
+              </span>
+              <span>{point}</span>
+            </div>
+          ))}
+        </div>
+
+        <form
+          onSubmit={(event) => onSubmit(event, role)}
+          autoComplete="on"
+          className="mt-7 space-y-5"
+        >
+          <div>
+            <label
+              htmlFor={`${role.toLowerCase()}-email`}
+              className="mb-2 block text-sm font-bold text-[#274f51]"
+            >
+              {tr.email}
+            </label>
+
+            <input
+              id={`${role.toLowerCase()}-email`}
+              type="email"
+              name={`${role.toLowerCase()}-email`}
+              autoComplete="email"
+              value={state.email}
+              onChange={(event) =>
+                setState((current) => ({
+                  ...current,
+                  email: event.target.value,
+                  error: null
+                }))
+              }
+              placeholder={tr.emailPlaceholder}
+              required
+              className="h-13 w-full rounded-2xl border border-[#073f43]/13 bg-[#fbfdfd] px-4 text-[15px] text-[#073f43] outline-none transition duration-200 placeholder:text-[#93a4a5] hover:border-[#12b8c4]/28 focus:border-[#12b8c4]/45 focus:bg-white focus:ring-4 focus:ring-[#12b8c4]/10"
+            />
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <label
+                htmlFor={`${role.toLowerCase()}-password`}
+                className="block text-sm font-bold text-[#274f51]"
+              >
+                {tr.password}
+              </label>
+
+              <Link
+                href={recoveryHref}
+                className="text-right text-xs font-bold text-[#6d7f80] transition hover:text-[#078b7b]"
+              >
+                {tr.forgot}
+              </Link>
+            </div>
+
+            <div className="relative">
+              <input
+                id={`${role.toLowerCase()}-password`}
+                type={state.showPassword ? "text" : "password"}
+                name={`${role.toLowerCase()}-password`}
+                autoComplete="current-password"
+                value={state.password}
+                onChange={(event) =>
+                  setState((current) => ({
+                    ...current,
+                    password: event.target.value,
+                    error: null
+                  }))
+                }
+                placeholder={tr.passwordPlaceholder}
+                required
+                className="h-13 w-full rounded-2xl border border-[#073f43]/13 bg-[#fbfdfd] px-4 pr-13 text-[15px] text-[#073f43] outline-none transition duration-200 placeholder:text-[#93a4a5] hover:border-[#12b8c4]/28 focus:border-[#12b8c4]/45 focus:bg-white focus:ring-4 focus:ring-[#12b8c4]/10"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setState((current) => ({
+                    ...current,
+                    showPassword: !current.showPassword
+                  }))
+                }
+                aria-label={
+                  state.showPassword ? tr.hide : tr.show
+                }
+                title={
+                  state.showPassword ? tr.hide : tr.show
+                }
+                className="absolute right-2 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-xl text-[#718788] transition hover:bg-[#eaf8f6] hover:text-[#078b7b]"
+              >
+                <EyeIcon hidden={state.showPassword} />
+              </button>
+            </div>
+          </div>
+
+          {state.error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
+              <span className="font-extrabold">
+                {tr.error}:
+              </span>{" "}
+              {state.error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={state.submitting}
+            className={`group/button flex min-h-13 w-full items-center justify-center rounded-full px-5 py-3.5 text-sm font-extrabold text-white transition duration-300 disabled:cursor-wait disabled:opacity-60 ${
+              psychologist
+                ? "bg-gradient-to-r from-[#075f62] via-[#078b7b] to-[#12aeba] shadow-[0_12px_30px_rgba(7,139,123,0.20)] hover:-translate-y-0.5 hover:shadow-[0_17px_38px_rgba(18,184,196,0.28)]"
+                : "bg-gradient-to-r from-[#087f78] via-[#3977e8] to-[#6655cc] shadow-[0_12px_30px_rgba(57,119,232,0.20)] hover:-translate-y-0.5 hover:shadow-[0_17px_38px_rgba(89,92,210,0.27)]"
+            }`}
+          >
+            {state.submitting
+              ? tr.submitting
+              : submitLabel}
+          </button>
+        </form>
+      </div>
+
+      <div className="relative mt-auto pt-6">
+        <div className="border-t border-[#073f43]/8 pt-5">
+          <p className="text-center text-xs font-semibold text-[#7a8d8e]">
+            {tr.noAccount}
+          </p>
+
+          <Link
+            href={registerHref}
+            className={`mt-3 flex min-h-12 w-full items-center justify-center rounded-full border bg-white px-4 py-3 text-center text-sm font-extrabold transition duration-300 hover:-translate-y-0.5 ${
+              psychologist
+                ? "border-[#078b7b]/18 text-[#078b7b] hover:border-[#12b8c4]/35 hover:bg-[#edf9f8] hover:shadow-[0_10px_28px_rgba(18,184,196,0.10)]"
+                : "border-[#5367ca]/16 text-[#5367ca] hover:border-[#7657df]/30 hover:bg-[#f3f1ff] hover:shadow-[0_10px_28px_rgba(118,87,223,0.10)]"
+            }`}
+          >
+            {registerLabel}
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [lang, setLang] = useState<Lang>("ru");
+  const [lang, setLang] = useState<Lang>("hy");
+
+  const [psychologist, setPsychologist] =
+    useState<LoginState>(INITIAL_STATE);
+
+  const [client, setClient] =
+    useState<LoginState>(INITIAL_STATE);
 
   useEffect(() => {
-    const syncLang = () => setLang(getUiLangFromCookie());
-    syncLang();
-
-    const onFocus = () => syncLang();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") syncLang();
+    const syncLang = () => {
+      setLang(getUiLangFromCookie());
     };
 
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
-    const timer = window.setInterval(syncLang, 700);
+    syncLang();
+
+    window.addEventListener("focus", syncLang);
 
     return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.clearInterval(timer);
+      window.removeEventListener("focus", syncLang);
     };
   }, []);
 
   const tr = TXT[lang];
-  const next = searchParams.get("next");
-  const isPsychologist =
-    searchParams.get("role") === "psychologist" ||
-    (next?.startsWith("/psychologists/onboarding") ?? false);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  async function onSubmit(
+    event: FormEvent<HTMLFormElement>,
+    role: AuthRole
+  ) {
+    event.preventDefault();
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (submitting) return;
+    const psychologistRole = role === "PSYCHOLOGIST";
 
-    setSubmitting(true);
-    setError(null);
+    const state = psychologistRole
+      ? psychologist
+      : client;
+
+    const setState = psychologistRole
+      ? setPsychologist
+      : setClient;
+
+    if (state.submitting) {
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      submitting: true,
+      error: null
+    }));
 
     try {
-      const r = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: state.email.trim().toLowerCase(),
+          password: state.password,
+          role
+        })
       });
 
-      const j = await r.json().catch(() => null);
+      const payload = await response
+        .json()
+        .catch(() => null);
 
-      if (!r.ok) {
-        setError(j?.message || tr.failed);
+      if (!response.ok) {
+        setState((current) => ({
+          ...current,
+          error: friendlyLoginError(
+            payload,
+            role,
+            tr
+          )
+        }));
         return;
       }
 
-      const redirectTo = next || (isPsychologist ? "/psychologists/onboarding/profile" : "/app");
+      const returnedRole =
+        payload?.role as AuthRole | undefined;
+
+      const requestedNext =
+        searchParams.get("next");
+
+      const nextAllowed =
+        requestedNext &&
+        (
+          (role === "CLIENT" &&
+            requestedNext.startsWith("/app")) ||
+          (role === "PSYCHOLOGIST" &&
+            (
+              requestedNext.startsWith("/pro") ||
+              requestedNext.startsWith(
+                "/psychologists/onboarding"
+              )
+            ))
+        );
+
+      const redirectTo =
+        nextAllowed && requestedNext
+          ? requestedNext
+          : returnedRole === "PSYCHOLOGIST"
+            ? "/pro"
+            : "/app";
+
       router.replace(redirectTo);
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || tr.failed);
+    } catch {
+      setState((current) => ({
+        ...current,
+        error: tr.failed
+      }));
     } finally {
-      setSubmitting(false);
+      setState((current) => ({
+        ...current,
+        submitting: false
+      }));
     }
   }
 
-  const heroTitle = isPsychologist ? tr.psychHeroTitle : tr.clientHeroTitle;
-  const heroText = isPsychologist ? tr.psychHeroText : tr.clientHeroText;
-  const hero1 = isPsychologist ? tr.psychHero1 : tr.clientHero1;
-  const hero2 = isPsychologist ? tr.psychHero2 : tr.clientHero2;
-  const hero3 = isPsychologist ? tr.psychHero3 : tr.clientHero3;
-  const title = isPsychologist ? tr.psychTitle : tr.clientTitle;
-  const subtitle = isPsychologist ? tr.psychSubtitle : tr.clientSubtitle;
-  const submitText = isPsychologist ? tr.submitPsych : tr.submitClient;
-
   return (
-    <main className="min-h-screen bg-[#fbfcff] px-6 py-10">
-      <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section className="rounded-3xl border bg-white p-8 shadow-sm">
-          <div className="text-sm text-gray-500">{tr.brand}</div>
-          <h1 className="mt-3 text-3xl font-semibold">{heroTitle}</h1>
-          <p className="mt-3 text-sm leading-6 text-gray-600">{heroText}</p>
+    <main className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_10%_15%,rgba(18,184,196,0.11),transparent_27%),radial-gradient(circle_at_90%_35%,rgba(118,87,223,0.09),transparent_28%)]" />
 
-          <div className="mt-8 grid grid-cols-1 gap-3 text-sm text-gray-700">
-            <div className="rounded-2xl bg-slate-50 p-4">{hero1}</div>
-            <div className="rounded-2xl bg-slate-50 p-4">{hero2}</div>
-            <div className="rounded-2xl bg-slate-50 p-4">{hero3}</div>
+      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 lg:px-10 lg:py-18">
+        <div className="mx-auto max-w-3xl text-center">
+          <span className="inline-flex rounded-full border border-[#12b8c4]/18 bg-white/80 px-4 py-2 text-xs font-extrabold tracking-[0.08em] text-[#078b7b] shadow-sm backdrop-blur">
+            {tr.eyebrow}
+          </span>
+
+          <h1 className="mt-5 text-balance text-3xl font-black tracking-[-0.04em] text-[#073f43] sm:text-4xl lg:text-[2.8rem]">
+            {tr.pageTitle}
+          </h1>
+
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-base leading-7 text-[#607172] sm:text-lg">
+            {tr.pageText}
+          </p>
+        </div>
+
+        <div className="mt-10 grid items-stretch gap-5 lg:grid-cols-2 lg:gap-6">
+          <div className="order-2 lg:order-1">
+            <LoginCard
+              role="PSYCHOLOGIST"
+              state={psychologist}
+              setState={setPsychologist}
+              tr={tr}
+              onSubmit={onSubmit}
+            />
           </div>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            {!isPsychologist ? (
-              <Link
-                href="/auth/login?role=psychologist&next=/psychologists/onboarding/profile"
-                className="inline-flex justify-center rounded-2xl border px-5 py-3 hover:bg-gray-50"
-              >
-                {tr.switchPsych}
-              </Link>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="inline-flex justify-center rounded-2xl border px-5 py-3 hover:bg-gray-50"
-              >
-                {tr.switchClient}
-              </Link>
-            )}
+          <div className="order-1 lg:order-2">
+            <LoginCard
+              role="CLIENT"
+              state={client}
+              setState={setClient}
+              tr={tr}
+              onSubmit={onSubmit}
+            />
           </div>
-        </section>
+        </div>
 
-        <section className="rounded-3xl border bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold">{title}</h2>
-          <p className="mt-2 text-sm text-gray-600">{subtitle}</p>
-
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">{tr.email}</label>
-              <input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-black/10"
-                placeholder={tr.emailPlaceholder}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">{tr.password}</label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-black/10"
-                placeholder={tr.passwordPlaceholder}
-                required
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-2xl border bg-red-50 p-4 text-sm text-red-800">
-                <b>{tr.error}:</b> {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-2xl bg-black text-white py-3 disabled:opacity-50"
-            >
-              {submitting ? tr.submitting : submitText}
-            </button>
-          </form>
-
-          <div className="mt-6 flex flex-col gap-3 text-sm">
-            <Link
-              href={isPsychologist ? "/auth/register?role=psychologist" : "/auth/register"}
-              className="inline-flex justify-center rounded-2xl border px-4 py-3 hover:bg-gray-50"
-            >
-              {tr.register}
-            </Link>
-
-            <Link
-              href="/"
-              className="inline-flex justify-center rounded-2xl border px-4 py-3 hover:bg-gray-50"
-            >
-              {tr.home}
-            </Link>
-          </div>
-        </section>
+        <div className="mt-7 text-center">
+          <Link
+            href="/"
+            className="inline-flex rounded-full px-4 py-2 text-sm font-bold text-[#607172] transition hover:bg-white hover:text-[#078b7b] hover:shadow-sm"
+          >
+            ← IviXHub
+          </Link>
+        </div>
       </div>
     </main>
   );

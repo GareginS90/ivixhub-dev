@@ -7,6 +7,8 @@ public record PublicPsychologistReviewResponse(
         Integer rating,
         String comment,
         String authorDisplayName,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        String replyComment,
+        OffsetDateTime repliedAt
 ) {
 }

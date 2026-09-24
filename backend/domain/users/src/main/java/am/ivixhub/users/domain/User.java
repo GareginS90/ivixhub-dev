@@ -31,6 +31,10 @@ public class User {
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender", nullable = false, length = 20)
+    private UserGender gender = UserGender.UNSPECIFIED;
+
     @Column(length = 50)
     private String phone;
 

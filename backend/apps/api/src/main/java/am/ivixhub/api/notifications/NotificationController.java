@@ -1,30 +1,34 @@
 package am.ivixhub.api.notifications;
 
-import am.ivixhub.notifications.domain.Notification;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
-    private final NotificationService service;
+    private final NotificationService notificationService;
 
-    public NotificationController(NotificationService service) {
-        this.service = service;
+    public NotificationController(NotificationService notificationService) {
+        this.notificationService = notificationService;
     }
 
-    @GetMapping("/my")
-    public List<Notification> my(Authentication auth) {
+    @GetMapping("/me")
+    public NotificationListResponse myNotifications(Authentication auth) {
         Long userId = (Long) auth.getPrincipal();
-        return service.my(userId);
+        return notificationService.getMyNotifications(userId);
     }
 
-    @PostMapping("/{id}/read")
-    public void markRead(Authentication auth, @PathVariable("id") Long id) {
+    @PostMapping("/{notificationId}/read")
+    public NotificationResponse markAsRead(Authentication auth,
+                                           @PathVariable("notificationId") Long notificationId) {
         Long userId = (Long) auth.getPrincipal();
-        service.markRead(userId, id);
+        return notificationService.markAsRead(userId, notificationId);
+    }
+
+    @PostMapping("/read-all")
+    public NotificationListResponse markAllAsRead(Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return notificationService.markAllAsRead(userId);
     }
 }

@@ -24,11 +24,6 @@ public class EscrowOrchestratorService {
         this.auditService = auditService;
     }
 
-    /**
-     * Called after payment confirmed:
-     * - create EscrowHold in our ledger
-     * - call provider to create hold
-     */
     @Transactional
     public EscrowHold createHold(Long bookingId,
                                  Long psychologistId,
@@ -37,7 +32,6 @@ public class EscrowOrchestratorService {
                                  String currency,
                                  OffsetDateTime holdUntil) {
 
-        // 1) create ledger row
         EscrowHold hold = new EscrowHold();
         hold.setBookingId(bookingId);
         hold.setPsychologistId(psychologistId);
@@ -47,7 +41,6 @@ public class EscrowOrchestratorService {
         hold.setStatus(EscrowStatus.HOLD);
         hold = escrowHoldRepository.save(hold);
 
-        // 2) call provider (mock for now)
         var res = escrowProvider.createHold(new EscrowProvider.CreateHoldRequest(
                 hold.getId(),
                 bookingId,
@@ -58,7 +51,6 @@ public class EscrowOrchestratorService {
                 holdUntil
         ));
 
-        // 3) audit
         auditService.log(
                 clientUserId,
                 "ESCROW_HOLD_CREATED",
@@ -72,10 +64,6 @@ public class EscrowOrchestratorService {
         return hold;
     }
 
-    /**
-     * Release escrow if holdUntil passed.
-     * Provider call happens here too.
-     */
     @Transactional
     public EscrowStatus releaseIfEligible(Long psychologistId, Long bookingId) {
         EscrowHold hold = escrowHoldRepository.findByBookingId(bookingId)
@@ -93,7 +81,6 @@ public class EscrowOrchestratorService {
             return EscrowStatus.HOLD;
         }
 
-        // call provider release
         var res = escrowProvider.releaseHold(new EscrowProvider.ReleaseHoldRequest(
                 hold.getId(),
                 hold.getBookingId(),
@@ -112,4 +99,56 @@ public class EscrowOrchestratorService {
 
         return EscrowStatus.RELEASED;
     }
+
+    @Transactional
+    public RefundResult refundForClientCancellation(Long bookingId,
+                                                    Long clientUserId,
+                                                    int refundPercent) {
+        EscrowHold hold = escrowHoldRepository.findByBookingId(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Escrow hold not found"));
+
+        if (hold.getStatus() != EscrowStatus.HOLD) {
+            return new RefundResult(
+                    hold.getStatus(),
+                    hold.getRefundPercent() == null ? refundPercent : hold.getRefundPercent(),
+                    hold.getRefundedAmountMinor() == null ? 0L : hold.getRefundedAmountMinor(),
+                    hold.getCurrency()
+            );
+        }
+
+        long refundedAmountMinor = Math.round(hold.getAmountMinor() * (refundPercent / 100.0));
+
+        hold.setStatus(EscrowStatus.REFUNDED);
+        hold.setRefundPercent(refundPercent);
+        hold.setRefundedAmountMinor(refundedAmountMinor);
+        hold.setRefundedAt(OffsetDateTime.now());
+        escrowHoldRepository.save(hold);
+
+        auditService.log(
+                clientUserId,
+                "ESCROW_REFUNDED_ON_CLIENT_CANCELLATION",
+                "Booking",
+                bookingId,
+                "escrowHoldId=" + hold.getId() +
+                        " refundPercent=" + refundPercent +
+                        " refundedAmountMinor=" + refundedAmountMinor +
+                        " currency=" + hold.getCurrency(),
+                null,
+                null
+        );
+
+        return new RefundResult(
+                EscrowStatus.REFUNDED,
+                refundPercent,
+                refundedAmountMinor,
+                hold.getCurrency()
+        );
+    }
+
+    public record RefundResult(
+            EscrowStatus escrowStatus,
+            int refundPercent,
+            long refundedAmountMinor,
+            String currency
+    ) {}
 }

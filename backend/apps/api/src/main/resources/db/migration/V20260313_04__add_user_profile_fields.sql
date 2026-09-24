@@ -19,5 +19,8 @@ alter table users
     alter column birth_date set not null;
 
 alter table users
+    drop constraint if exists chk_users_birth_date_range;
+
+alter table users
     add constraint chk_users_birth_date_range
     check (birth_date between date '1940-01-01' and date '2010-12-31');

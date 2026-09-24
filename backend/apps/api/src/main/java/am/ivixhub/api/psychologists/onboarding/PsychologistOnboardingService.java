@@ -12,9 +12,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Service
 public class PsychologistOnboardingService {
+
+    private static final Set<PsychologistStatus> EDITABLE_STATUSES = Set.of(
+            PsychologistStatus.DRAFT,
+            PsychologistStatus.VERIFIED,
+            PsychologistStatus.REJECTED
+    );
 
     private final UserRepository userRepository;
     private final PsychologistRepository psychologistRepository;
@@ -42,7 +49,7 @@ public class PsychologistOnboardingService {
 
         var existing = psychologistRepository.findByUser(user);
         if (existing.isPresent()) {
-            return PsychologistOnboardingResponse.from(existing.get());
+            return PsychologistOnboardingResponse.from(existing.get(), resolveAvatarUrl(existing.get().getId()));
         }
 
         try {
@@ -52,10 +59,10 @@ public class PsychologistOnboardingService {
             created.setActive(true);
 
             Psychologist saved = psychologistRepository.save(created);
-            return PsychologistOnboardingResponse.from(saved);
+            return PsychologistOnboardingResponse.from(saved, resolveAvatarUrl(saved.getId()));
         } catch (DataIntegrityViolationException ex) {
             return psychologistRepository.findByUser(user)
-                    .map(PsychologistOnboardingResponse::from)
+                    .map(p -> PsychologistOnboardingResponse.from(p, resolveAvatarUrl(p.getId())))
                     .orElseThrow(() -> ex);
         }
     }
@@ -68,7 +75,7 @@ public class PsychologistOnboardingService {
         Psychologist p = psychologistRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalArgumentException("Psychologist profile not found"));
 
-        if (p.getStatus() != PsychologistStatus.DRAFT) {
+        if (!EDITABLE_STATUSES.contains(p.getStatus())) {
             throw new IllegalArgumentException("Profile is not editable in current status: " + p.getStatus());
         }
 
@@ -76,13 +83,16 @@ public class PsychologistOnboardingService {
         var normalizedSpecs = catalogValidationService.normalizeAndValidateSpecializations(req.specializations());
 
         p.setExperienceYears(req.experienceYears());
-        p.setBio(req.bio());
+        p.setBio(req.bio() == null ? null : req.bio().trim());
         p.setLanguages(req.languages());
         p.setMethods(normalizedMethods);
         p.setSpecializations(normalizedSpecs);
 
-        psychologistRepository.save(p);
-        return PsychologistOnboardingResponse.from(p);
+        user.setGender(req.gender());
+        userRepository.save(user);
+
+        Psychologist saved = psychologistRepository.save(p);
+        return PsychologistOnboardingResponse.from(saved, resolveAvatarUrl(saved.getId()));
     }
 
     @Transactional
@@ -97,12 +107,16 @@ public class PsychologistOnboardingService {
         Psychologist p = psychologistRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalArgumentException("Psychologist profile not found"));
 
-        if (p.getStatus() != PsychologistStatus.DRAFT) {
-            throw new IllegalArgumentException("Not in DRAFT");
+        if (p.getStatus() != PsychologistStatus.DRAFT && p.getStatus() != PsychologistStatus.REJECTED) {
+            throw new IllegalArgumentException("Submit is allowed only from DRAFT or REJECTED");
         }
 
         if (p.getExperienceYears() <= 0) {
             throw new IllegalArgumentException("experienceYears must be > 0");
+        }
+
+        if (p.getBio() == null || p.getBio().trim().length() < 20) {
+            throw new IllegalArgumentException("bio must contain at least 20 characters");
         }
 
         boolean hasDiploma = documentRepository.existsByPsychologistIdAndDocType(p.getId(), PsychologistDocumentType.DIPLOMA);
@@ -125,8 +139,19 @@ public class PsychologistOnboardingService {
 
         p.setStatus(PsychologistStatus.PENDING_VERIFICATION);
         p.setSubmittedAt(OffsetDateTime.now());
-        psychologistRepository.save(p);
+        Psychologist saved = psychologistRepository.save(p);
 
-        return PsychologistOnboardingResponse.from(p);
+        return PsychologistOnboardingResponse.from(saved, resolveAvatarUrl(saved.getId()));
+    }
+
+    private String resolveAvatarUrl(Long psychologistId) {
+        return documentRepository.findAllByPsychologistId(psychologistId)
+                .stream()
+                .filter(doc -> doc.getDocType() == PsychologistDocumentType.PROFILE_PHOTO)
+                .sorted((a, b) -> b.getUploadedAt().compareTo(a.getUploadedAt()))
+                .map(doc -> doc.getFileUrl() == null ? null : doc.getFileUrl().trim())
+                .filter(url -> url != null && !url.isBlank())
+                .findFirst()
+                .orElse(null);
     }
 }

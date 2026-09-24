@@ -1,32 +1,44 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export function PublicHeader() {
   return (
-    <header className="sticky top-0 z-20 w-full border-b bg-white/70 backdrop-blur">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-2xl bg-black text-white grid place-items-center text-sm font-semibold">
-            IX
-          </div>
-          <div className="leading-tight">
-            <div className="font-semibold">IvixHUB</div>
-            <div className="text-xs text-gray-500">Psychology platform</div>
-          </div>
-        </Link>
+    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/75 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <BrandLogo href="/" size="md" />
 
-        <nav className="hidden md:flex items-center gap-4 text-sm text-gray-700">
-          <Link href="/quiz" className="hover:text-black">Quiz</Link>
-          <Link href="/psychologists" className="hover:text-black">Psychologists</Link>
-          <Link href="/trust-safety" className="hover:text-black">Trust</Link>
-          <Link href="/support" className="hover:text-black">Support</Link>
+        <nav className="hidden items-center gap-2 md:flex">
+          <Link
+            href="/quiz"
+            className="rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Quiz
+          </Link>
+          <Link
+            href="/psychologists"
+            className="rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Psychologists
+          </Link>
+          <Link
+            href="/support"
+            className="rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Support
+          </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:block h-6 w-px bg-gray-200" />
-          <Link href="/auth/login" className="text-sm rounded-xl border px-3 py-2 hover:bg-gray-50">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/auth/login"
+            className="rounded-xl px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+          >
             Login
           </Link>
-          <Link href="/auth/register" className="text-sm rounded-xl bg-black text-white px-3 py-2 hover:opacity-90">
+          <Link
+            href="/auth/register"
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white transition hover:opacity-90"
+          >
             Register
           </Link>
         </div>

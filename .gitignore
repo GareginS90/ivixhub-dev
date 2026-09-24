@@ -11,3 +11,6 @@ target
 coverage
 .vscode
 .idea
+
+# Runtime/private uploaded files
+storage/psychologist-docs/
