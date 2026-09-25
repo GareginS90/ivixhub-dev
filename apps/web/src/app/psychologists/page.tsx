@@ -488,14 +488,23 @@ function PsychCard({
 }
 
 async function loadCatalogOptions(langUi: Lang) {
+  const base = process.env.IVIXHUB_API_BASE_URL?.replace(/\/+$/, "");
+
+  if (!base) {
+    return {
+      methods: METHOD_FALLBACK[langUi],
+      specs: SPEC_FALLBACK[langUi]
+    };
+  }
+
   try {
     const [methodsRes, specsRes] = await Promise.all([
       fetch(
-        `http://localhost:3000/api/catalog/methods?lang=${langUi}`,
+        `${base}/api/catalog/methods?lang=${encodeURIComponent(langUi)}`,
         { cache: "no-store" }
       ),
       fetch(
-        `http://localhost:3000/api/catalog/specializations?lang=${langUi}`,
+        `${base}/api/catalog/specializations?lang=${encodeURIComponent(langUi)}`,
         { cache: "no-store" }
       )
     ]);
@@ -581,12 +590,36 @@ export default async function PsychologistsCatalog({
   if (ageFrom) query.set("ageFrom", ageFrom);
   if (ageTo) query.set("ageTo", ageTo);
 
+  const base = process.env.IVIXHUB_API_BASE_URL?.replace(/\/+$/, "");
+  const publicListPath =
+    process.env.IVIXHUB_PSY_PUBLIC_LIST_PATH ||
+    "/api/public/psychologists";
+
+  const backendQuery = new URLSearchParams();
+
+  if (lang) backendQuery.set("language", lang);
+  if (gender) backendQuery.set("gender", gender);
+  if (method) backendQuery.set("method", method);
+  if (tag) backendQuery.set("specialization", tag);
+  if (ageFrom) backendQuery.set("ageFrom", ageFrom);
+  if (ageTo) backendQuery.set("ageTo", ageTo);
+
+  const psychologistsUrl = base
+    ? `${base}${publicListPath}${
+        backendQuery.size > 0 ? `?${backendQuery.toString()}` : ""
+      }`
+    : null;
+
   const [catalogOptions, response] = await Promise.all([
     loadCatalogOptions(langUi),
-    fetch(
-      `http://localhost:3000/api/psychologists/list?${query.toString()}`,
-      { cache: "no-store" }
-    ).catch(() => null)
+    psychologistsUrl
+      ? fetch(psychologistsUrl, {
+          headers: {
+            Accept: "application/json"
+          },
+          cache: "no-store"
+        }).catch(() => null)
+      : Promise.resolve(null)
   ]);
 
   let items: PublicPsych[] = [];
