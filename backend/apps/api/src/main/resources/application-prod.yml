@@ -6,9 +6,9 @@ spring:
     name: ivixhub-api
 
   datasource:
-    url: ${IVIXHUB_DB_URL}
-    username: ${IVIXHUB_DB_USER}
-    password: ${IVIXHUB_DB_PASS}
+    url: jdbc:postgresql://${PGHOST_UNPOOLED}:5432/${PGDATABASE}?sslmode=require
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -37,4 +37,3 @@ ivixhub:
   storage:
     local:
       rootDir: ${IVIXHUB_STORAGE_ROOT:/var/lib/ivixhub/storage}
-
