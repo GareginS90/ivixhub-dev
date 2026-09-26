@@ -5,6 +5,9 @@ spring:
   application:
     name: ivixhub-api
 
+  main:
+    lazy-initialization: true
+
   datasource:
     url: jdbc:postgresql://${PGHOST_UNPOOLED}:5432/${PGDATABASE}?sslmode=require
     username: ${PGUSER}
