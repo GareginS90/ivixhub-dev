@@ -19,6 +19,7 @@ spring:
       initialization-fail-timeout: -1
 
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: none
     open-in-view: false
