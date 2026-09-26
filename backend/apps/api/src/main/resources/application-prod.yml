@@ -19,7 +19,6 @@ spring:
       initialization-fail-timeout: -1
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: none
     open-in-view: false
@@ -27,6 +26,7 @@ spring:
       hibernate:
         boot:
           allow_jdbc_metadata_access: false
+        format_sql: false
 
   flyway:
     enabled: true
@@ -38,6 +38,14 @@ management:
     web:
       exposure:
         include: health,info
+
+logging:
+  level:
+    root: INFO
+    am.ivixhub: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.type.descriptor.sql: WARN
 
 ivixhub:
   security:
