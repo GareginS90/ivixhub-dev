@@ -1,52 +1,74 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ADMIN_ROUTES, type Role } from "@ivixhub/contracts";
 
-function matchRoute(pathname: string) {
-  for (const r of ADMIN_ROUTES) {
-    const pattern = "^" + r.path.replace(/:[^/]+/g, "[^/]+") + "$";
-    if (new RegExp(pattern).test(pathname)) return r;
-  }
-  return null;
-}
+const LOGIN_PATH = "/login";
+const REFRESH_PATH = "/api/auth/refresh";
 
-function getRole(req: NextRequest): Role {
-  const role = req.cookies.get("ivixhub_role")?.value as Role | undefined;
-  return role ?? "GUEST";
-}
+const ACCESS_COOKIE = "ivixhub_admin_access";
+const REFRESH_COOKIE = "ivixhub_admin_refresh";
 
-export function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+export function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
 
-  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
+  const hasAccessToken = Boolean(
+    request.cookies.get(ACCESS_COOKIE)?.value
+  );
+
+  const hasRefreshToken = Boolean(
+    request.cookies.get(REFRESH_COOKIE)?.value
+  );
+
+  if (pathname === LOGIN_PATH) {
+    if (hasAccessToken) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+
+      return NextResponse.redirect(url);
+    }
+
+    if (hasRefreshToken) {
+      const url = request.nextUrl.clone();
+      url.pathname = REFRESH_PATH;
+      url.search = "";
+      url.searchParams.set("next", "/");
+
+      return NextResponse.redirect(url);
+    }
+
     return NextResponse.next();
   }
 
-  const route = matchRoute(pathname);
-  if (!route) return NextResponse.next();
+  if (hasAccessToken) {
+    return NextResponse.next();
+  }
 
-  const role = getRole(req);
+  if (hasRefreshToken) {
+    const url = request.nextUrl.clone();
+    url.pathname = REFRESH_PATH;
+    url.search = "";
 
-  if (!route.allowed.includes(role)) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/admin/login";
+    const nextPath = `${pathname}${search}`;
+
+    url.searchParams.set(
+      "next",
+      nextPath.startsWith("/") && !nextPath.startsWith("//")
+        ? nextPath
+        : "/"
+    );
+
     return NextResponse.redirect(url);
   }
 
-  const needsAuth = route.guards?.includes("AUTH");
-  if (needsAuth) {
-    const session = req.cookies.get("ivixhub_session")?.value;
-    if (!session) {
-      const url = req.nextUrl.clone();
-      url.pathname = "/admin/login";
-      url.searchParams.set("next", pathname);
-      return NextResponse.redirect(url);
-    }
-  }
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = LOGIN_PATH;
+  loginUrl.search = "";
 
-  return NextResponse.next();
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/admin/:path*"]
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"
+  ]
 };

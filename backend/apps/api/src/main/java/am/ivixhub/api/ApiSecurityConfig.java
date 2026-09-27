@@ -39,7 +39,6 @@ public class ApiSecurityConfig {
             .rememberMe(rm -> rm.disable())
             .requestCache(rc -> rc.disable())
 
-            // ✅ custom JSON for 401/403
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(authEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)
@@ -52,6 +51,11 @@ public class ApiSecurityConfig {
 
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+
+                .requestMatchers(
+                    "/api/admin/auth/login",
+                    "/api/admin/auth/refresh"
+                ).permitAll()
 
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/debug/**").hasRole("ADMIN")

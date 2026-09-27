@@ -1,16 +1,22 @@
+import type { Metadata } from "next";
 import "./globals.css";
-import TopBar from "@/components/admin/TopBar";
+import AdminSessionKeeper from "@/components/admin/AdminSessionKeeper";
+
+export const metadata: Metadata = {
+  title: "IviXHub Admin",
+  description: "IviXHub administration panel"
+};
 
 export default function RootLayout({
-  children,
-}: {
+  children
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en">
+    <html lang="hy">
       <body className="bg-zinc-50">
-        <TopBar />
-        <main className="p-6">{children}</main>
+        <AdminSessionKeeper />
+        {children}
       </body>
     </html>
   );

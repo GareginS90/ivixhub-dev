@@ -1,3 +1,7 @@
+import "server-only";
+
+import { cookies } from "next/headers";
+
 export type PsychologistStatus =
   | "DRAFT"
   | "PENDING_VERIFICATION"
@@ -60,15 +64,94 @@ export type AuditEvent = {
   createdAt: string;
 };
 
+export type UserRole = "CLIENT" | "PSYCHOLOGIST" | "ADMIN";
+
+export type UserGender = "MALE" | "FEMALE" | "UNSPECIFIED";
+
+export type AdminUser = {
+  id: number;
+  email: string;
+  fullName: string | null;
+  username: string;
+  birthDate: string;
+  gender: UserGender;
+  phone: string | null;
+  phoneVerified: boolean;
+  role: UserRole;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUsersPage = {
+  users: AdminUser[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+};
+
+type ApiProblem = {
+  message?: unknown;
+  detail?: unknown;
+  title?: unknown;
+  error?: unknown;
+};
+
 function getBaseUrl() {
   const base = process.env.IVIXHUB_API_BASE_URL;
+
   if (!base) {
     throw new Error("IVIXHUB_API_BASE_URL is not set in apps/admin");
   }
-  return base;
+
+  return base.replace(/\/+$/, "");
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+function extractErrorMessage(
+  parsed: unknown,
+  fallback: string
+): string {
+  if (typeof parsed === "string") {
+    const value = parsed.trim();
+
+    if (value) {
+      return value;
+    }
+
+    return fallback;
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    return fallback;
+  }
+
+  const problem = parsed as ApiProblem;
+
+  const candidates = [
+    problem.message,
+    problem.detail,
+    problem.error,
+    problem.title
+  ];
+
+  for (const candidate of candidates) {
+    if (
+      typeof candidate === "string" &&
+      candidate.trim()
+    ) {
+      return candidate.trim();
+    }
+  }
+
+  return fallback;
+}
+
+async function parseResponse<T>(
+  response: Response
+): Promise<T> {
   const text = await response.text();
   let parsed: unknown = null;
 
@@ -79,12 +162,12 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 
   if (!response.ok) {
-    const message =
-      typeof parsed === "object" && parsed && "message" in parsed
-        ? String((parsed as { message?: string }).message || "Request failed")
-        : text || "Request failed";
-
-    throw new Error(message);
+    throw new Error(
+      extractErrorMessage(
+        parsed,
+        `Request failed (${response.status})`
+      )
+    );
   }
 
   return parsed as T;
@@ -94,21 +177,38 @@ export async function adminFetch<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  const base = getBaseUrl();
+  const cookieStore = await cookies();
+  const accessToken =
+    cookieStore.get("ivixhub_admin_access")?.value;
 
-  const response = await fetch(`${base}${path}`, {
+  if (!accessToken) {
+    throw new Error("ADMIN_UNAUTHENTICATED");
+  }
+
+  const response = await fetch(`${getBaseUrl()}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
       ...(init?.headers || {})
     },
     cache: "no-store"
   });
 
+  if (response.status === 401) {
+    throw new Error("ADMIN_SESSION_EXPIRED");
+  }
+
+  if (response.status === 403) {
+    throw new Error("ADMIN_FORBIDDEN");
+  }
+
   return parseResponse<T>(response);
 }
 
-export function fmtDateTime(value?: string | null) {
+export function fmtDateTime(
+  value?: string | null
+) {
   if (!value) return "—";
 
   try {
@@ -125,19 +225,32 @@ export function fmtDateTime(value?: string | null) {
   }
 }
 
-export function shortText(value?: string | null, max = 140) {
+export function shortText(
+  value?: string | null,
+  max = 140
+) {
   const x = (value || "").trim();
+
   if (!x) return "—";
   if (x.length <= max) return x;
+
   return `${x.slice(0, max).trim()}…`;
 }
 
 export function statusTone(status?: string) {
   const x = (status || "").toUpperCase();
 
-  if (x === "VERIFIED") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (x === "PENDING_VERIFICATION") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (x === "REJECTED") return "border-rose-200 bg-rose-50 text-rose-800";
+  if (x === "VERIFIED") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+
+  if (x === "PENDING_VERIFICATION") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+
+  if (x === "REJECTED") {
+    return "border-rose-200 bg-rose-50 text-rose-800";
+  }
 
   return "border-slate-200 bg-slate-50 text-slate-700";
 }

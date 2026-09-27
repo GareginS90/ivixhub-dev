@@ -14,3 +14,5 @@ coverage
 
 # Runtime/private uploaded files
 storage/psychologist-docs/
+.vercel
+.env*
